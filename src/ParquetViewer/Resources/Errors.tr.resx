@@ -262,4 +262,12 @@ Eğer dosyanın aslında geçerli olduğunu düşünüyorsanız lutfen projenin 
   <data name="RenderResultsErrorTitle" xml:space="preserve">
     <value>Sonuçlar gösterilirken bir hata oluştu</value>
   </data>
+  <data name="ExportRowLimitExceededErrorTitle" xml:space="preserve">
+    <value>Çok fazla satır</value>
+  </data>
+  <data name="ExportRowLimitExceededErrorMessageFormat" xml:space="preserve">
+    <value>{0} dosya formatı en fazla {1:N0} satır desteklemektedir.
+
+Bu aktarım {2} satır içeriyor. Lütfen bunun yerine CSV, JSON veya Parquet formatında aktarın.</value>
+  </data>
 </root>

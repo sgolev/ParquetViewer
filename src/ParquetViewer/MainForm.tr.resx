@@ -117,24 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="recordsToLabel.Text" xml:space="preserve">
-    <value>Kayıt Sayısı:</value>
-  </data>
-  <data name="recordsToLabel.ToolTip" xml:space="preserve">
-    <value />
-  </data>
-  <data name="recordCountTextBox.ToolTip" xml:space="preserve">
-    <value />
-  </data>
-  <data name="showRecordsFromLabel.Text" xml:space="preserve">
-    <value>Kayıt Atla:</value>
-  </data>
-  <data name="showRecordsFromLabel.ToolTip" xml:space="preserve">
-    <value />
-  </data>
-  <data name="offsetTextBox.ToolTip" xml:space="preserve">
-    <value />
-  </data>
   <data name="runQueryButton.Text" xml:space="preserve">
     <value>İşle</value>
   </data>
@@ -205,9 +187,6 @@
   </data>
   <data name="mainGridView.ToolTip" xml:space="preserve">
     <value />
-  </data>
-  <data name="loadAllRowsButton.ToolTip" xml:space="preserve">
-    <value>Tüm kayıtları yükle (Ctrl+E)</value>
   </data>
   <data name="mainTableLayoutPanel.ToolTip" xml:space="preserve">
     <value />
@@ -360,15 +339,6 @@
   <data name="customDateFormatToolStripMenuItem.Text" xml:space="preserve">
     <value>Özel...</value>
   </data>
-  <data name="alwaysLoadAllRecordsToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>201, 22</value>
-  </data>
-  <data name="alwaysLoadAllRecordsToolStripMenuItem.Text" xml:space="preserve">
-    <value>Hep Tüm Kayitları Yükle</value>
-  </data>
-  <data name="alwaysLoadAllRecordsToolStripMenuItem.ToolTipText" xml:space="preserve">
-    <value>Yeni dosya açarken ParquetViewer dosyadaki tüm kayıtları yükler</value>
-  </data>
   <data name="darkModeToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>201, 22</value>
   </data>
@@ -453,33 +423,6 @@
   <data name="aboutToolStripMenuItem.Text" xml:space="preserve">
     <value>Hakkında</value>
   </data>
-  <data name="showingRecordCountStatusBarLabel.Size" type="System.Drawing.Size, System.Drawing">
-    <value>63, 17</value>
-  </data>
-  <data name="showingRecordCountStatusBarLabel.Text" xml:space="preserve">
-    <value>Gösterilen:</value>
-  </data>
-  <data name="recordsTextStatusBarLabel.Size" type="System.Drawing.Size, System.Drawing">
-    <value>40, 17</value>
-  </data>
-  <data name="recordsTextStatusBarLabel.Text" xml:space="preserve">
-    <value>Sonuç</value>
-  </data>
-  <data name="springStatusBarLabel.Size" type="System.Drawing.Size, System.Drawing">
-    <value>673, 17</value>
-  </data>
-  <data name="showingStatusBarLabel.Size" type="System.Drawing.Size, System.Drawing">
-    <value>59, 17</value>
-  </data>
-  <data name="showingStatusBarLabel.Text" xml:space="preserve">
-    <value>Yüklenen:</value>
-  </data>
-  <data name="outOfStatusBarLabel.Size" type="System.Drawing.Size, System.Drawing">
-    <value>50, 17</value>
-  </data>
-  <data name="outOfStatusBarLabel.Text" xml:space="preserve">
-    <value>Toplam:</value>
-  </data>
   <data name="mainStatusStrip.ToolTip" xml:space="preserve">
     <value />
   </data>
@@ -488,5 +431,20 @@
   </data>
   <data name="$this.ToolTip" xml:space="preserve">
     <value />
+  </data>
+  <data name="goToRowToolStripMenuItem.Text" xml:space="preserve">
+    <value>Satıra &amp;Git...</value>
+  </data>
+  <data name="goToRowToolStripMenuItem.ToolTipText" xml:space="preserve">
+    <value>Belirli bir satır numarasına git</value>
+  </data>
+  <data name="previousPageButton.Text" xml:space="preserve">
+    <value>&lt; Önceki</value>
+  </data>
+  <data name="pageStatusBarLabel.Text" xml:space="preserve">
+    <value>Sayfa</value>
+  </data>
+  <data name="nextPageButton.Text" xml:space="preserve">
+    <value>Sonraki &gt;</value>
   </data>
 </root>

@@ -32,6 +32,8 @@ public partial class MainForm
         }
         mainStatusStrip.BackColor = theme.FormBackgroundColor;
         mainStatusStrip.ForeColor = theme.TextColor;
+        pageNumberTextBox.BackColor = theme.CellBackgroundColor;
+        pageNumberTextBox.ForeColor = theme.TextColor;
         mainGridView.BorderStyle = BorderStyle.Fixed3D;
         searchFilterLabel.LinkColor = theme.HyperlinkColor;
         searchFilterLabel.ActiveLinkColor = theme.ActiveHyperlinkColor;

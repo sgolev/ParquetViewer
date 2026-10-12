@@ -424,15 +424,6 @@ namespace ParquetViewer.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to {0} to {1}.
-        /// </summary>
-        internal static string LoadedRecordCountRangeFormat {
-            get {
-                return ResourceManager.GetString("LoadedRecordCountRangeFormat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Loading Data.
         /// </summary>
         internal static string LoadingDataLabelText {
@@ -673,6 +664,87 @@ namespace ParquetViewer.Resources {
         internal static string WordWrapContextMenuItemText {
             get {
                 return ResourceManager.GetString("WordWrapContextMenuItemText", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Go To Row.
+        /// </summary>
+        internal static string GoToRowFormTitle {
+            get {
+                return ResourceManager.GetString("GoToRowFormTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Row number (1 - {0}):.
+        /// </summary>
+        internal static string GoToRowLabelTextFormat {
+            get {
+                return ResourceManager.GetString("GoToRowLabelTextFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Match number (1 - {0}):.
+        /// </summary>
+        internal static string GoToMatchLabelTextFormat {
+            get {
+                return ResourceManager.GetString("GoToMatchLabelTextFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Go.
+        /// </summary>
+        internal static string GoToRowButtonText {
+            get {
+                return ResourceManager.GetString("GoToRowButtonText", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Searching for matches.
+        /// </summary>
+        internal static string SearchingForMatchesLabelText {
+            get {
+                return ResourceManager.GetString("SearchingForMatchesLabelText", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Rows matching the current query will be exported.
+        /// </summary>
+        internal static string MatchingRecordsToBeExportedTitle {
+            get {
+                return ResourceManager.GetString("MatchingRecordsToBeExportedTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to of {0:N0} ({1:N0} rows).
+        /// </summary>
+        internal static string PageCountFormat {
+            get {
+                return ResourceManager.GetString("PageCountFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to of {0:N0}+ ({1:N0}+ rows).
+        /// </summary>
+        internal static string PageCountIncompleteFormat {
+            get {
+                return ResourceManager.GetString("PageCountIncompleteFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Sorting is only available when all rows fit on a single page..
+        /// </summary>
+        internal static string SortingUnavailableToolTip {
+            get {
+                return ResourceManager.GetString("SortingUnavailableToolTip", resourceCulture);
             }
         }
     }

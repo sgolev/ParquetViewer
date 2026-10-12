@@ -117,9 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="LoadedRecordCountRangeFormat" xml:space="preserve">
-    <value>{0} - {1}</value>
-  </data>
   <data name="LoadingDataLabelText" xml:space="preserve">
     <value>Veri Yükleniyor</value>
   </data>
@@ -344,5 +341,32 @@ Tercihinizi Düzen menüsünden istediğiniz zaman değiştirebilirsiniz.</value
   </data>
   <data name="WordWrapContextMenuItemText" xml:space="preserve">
     <value>Metni Kaydır</value>
+  </data>
+  <data name="GoToRowFormTitle" xml:space="preserve">
+    <value>Satıra Git</value>
+  </data>
+  <data name="GoToRowLabelTextFormat" xml:space="preserve">
+    <value>Satır numarası (1 - {0}):</value>
+  </data>
+  <data name="GoToMatchLabelTextFormat" xml:space="preserve">
+    <value>Eşleşme numarası (1 - {0}):</value>
+  </data>
+  <data name="GoToRowButtonText" xml:space="preserve">
+    <value>Git</value>
+  </data>
+  <data name="SearchingForMatchesLabelText" xml:space="preserve">
+    <value>Eşleşmeler Aranıyor</value>
+  </data>
+  <data name="MatchingRecordsToBeExportedTitle" xml:space="preserve">
+    <value>Geçerli sorguyla eşleşen kayıtlar kaydedilecektir</value>
+  </data>
+  <data name="PageCountFormat" xml:space="preserve">
+    <value>/ {0:N0} ({1:N0} satır)</value>
+  </data>
+  <data name="PageCountIncompleteFormat" xml:space="preserve">
+    <value>/ {0:N0}+ ({1:N0}+ satır)</value>
+  </data>
+  <data name="SortingUnavailableToolTip" xml:space="preserve">
+    <value>Sıralama yalnızca tüm satırlar tek bir sayfaya sığdığında kullanılabilir.</value>
   </data>
 </root>

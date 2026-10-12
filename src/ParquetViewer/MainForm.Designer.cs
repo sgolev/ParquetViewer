@@ -1,4 +1,4 @@
-
+﻿
 using ParquetViewer.Controls;
 using ParquetViewer.Helpers;
 using System.Windows.Forms;
@@ -37,16 +37,11 @@ namespace ParquetViewer
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
             mainTableLayoutPanel = new TableLayoutPanel();
-            recordsToLabel = new Label();
-            recordCountTextBox = new DelayedOnChangedTextBox();
-            showRecordsFromLabel = new Label();
-            offsetTextBox = new DelayedOnChangedTextBox();
             runQueryButton = new Button();
             searchFilterLabel = new LinkLabel();
             searchFilterTextBox = new TextBox();
             clearFilterButton = new Button();
             mainGridView = new ParquetGridView();
-            loadAllRowsButton = new Button();
             openParquetFileDialog = new OpenFileDialog();
             mainMenuStrip = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
@@ -59,11 +54,11 @@ namespace ParquetViewer
             exitToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             changeFieldsMenuStripButton = new ToolStripMenuItem();
+            goToRowToolStripMenuItem = new ToolStripMenuItem();
             changeDateFormatToolStripMenuItem = new ToolStripMenuItem();
             defaultToolStripMenuItem = new ToolStripMenuItem();
             iSO8601ToolStripMenuItem = new ToolStripMenuItem();
             customDateFormatToolStripMenuItem = new ToolStripMenuItem();
-            alwaysLoadAllRecordsToolStripMenuItem = new ToolStripMenuItem();
             darkModeToolStripMenuItem = new ToolStripMenuItem();
             toolsToolStripMenuItem = new ToolStripMenuItem();
             getSQLCreateTableScriptToolStripMenuItem = new ToolStripMenuItem();
@@ -75,18 +70,16 @@ namespace ParquetViewer
             englishToolStripMenuItem = new ToolStripMenuItem();
             turkishToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
-            showingRecordCountStatusBarLabel = new ToolStripStatusLabel();
-            actualShownRecordCountLabel = new ToolStripStatusLabel();
-            recordsTextStatusBarLabel = new ToolStripStatusLabel();
-            springStatusBarLabel = new ToolStripStatusLabel();
-            showingStatusBarLabel = new ToolStripStatusLabel();
-            recordCountStatusBarLabel = new ToolStripStatusLabel();
-            outOfStatusBarLabel = new ToolStripStatusLabel();
-            totalRowCountStatusBarLabel = new ToolStripStatusLabel();
+            leftSpringStatusBarLabel = new ToolStripStatusLabel();
+            previousPageButton = new ToolStripButton();
+            pageStatusBarLabel = new ToolStripStatusLabel();
+            pageNumberTextBox = new ToolStripTextBox();
+            pageCountStatusBarLabel = new ToolStripStatusLabel();
+            nextPageButton = new ToolStripButton();
+            rightSpringStatusBarLabel = new ToolStripStatusLabel();
             mainStatusStrip = new StatusStrip();
             exportFileDialog = new SaveFileDialog();
             openFolderDialog = new FolderBrowserDialog();
-            loadAllRowsButtonTooltip = new ToolTip(components);
             fileIntegrityCheckingTimer = new Timer(components);
             mainTableLayoutPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)mainGridView).BeginInit();
@@ -97,44 +90,13 @@ namespace ParquetViewer
             // mainTableLayoutPanel
             // 
             resources.ApplyResources(mainTableLayoutPanel, "mainTableLayoutPanel");
-            mainTableLayoutPanel.Controls.Add(recordsToLabel, 8, 0);
-            mainTableLayoutPanel.Controls.Add(recordCountTextBox, 9, 0);
-            mainTableLayoutPanel.Controls.Add(showRecordsFromLabel, 6, 0);
-            mainTableLayoutPanel.Controls.Add(offsetTextBox, 7, 0);
             mainTableLayoutPanel.Controls.Add(runQueryButton, 4, 0);
             mainTableLayoutPanel.Controls.Add(searchFilterLabel, 0, 0);
             mainTableLayoutPanel.Controls.Add(searchFilterTextBox, 2, 0);
             mainTableLayoutPanel.Controls.Add(clearFilterButton, 5, 0);
             mainTableLayoutPanel.Controls.Add(mainGridView, 0, 1);
-            mainTableLayoutPanel.Controls.Add(loadAllRowsButton, 10, 0);
             mainTableLayoutPanel.Name = "mainTableLayoutPanel";
-            // 
-            // recordsToLabel
-            // 
-            resources.ApplyResources(recordsToLabel, "recordsToLabel");
-            recordsToLabel.Name = "recordsToLabel";
-            // 
-            // recordCountTextBox
-            // 
-            resources.ApplyResources(recordCountTextBox, "recordCountTextBox");
-            recordCountTextBox.DelayedTextChangedTimeout = 1000;
-            recordCountTextBox.Name = "recordCountTextBox";
-            recordCountTextBox.DelayedTextChanged += RecordsToTextBox_TextChanged;
-            recordCountTextBox.KeyPress += RecordsToTextBox_KeyPress;
-            // 
-            // showRecordsFromLabel
-            // 
-            resources.ApplyResources(showRecordsFromLabel, "showRecordsFromLabel");
-            showRecordsFromLabel.Name = "showRecordsFromLabel";
-            // 
-            // offsetTextBox
-            // 
-            resources.ApplyResources(offsetTextBox, "offsetTextBox");
-            offsetTextBox.DelayedTextChangedTimeout = 1000;
-            offsetTextBox.Name = "offsetTextBox";
-            offsetTextBox.DelayedTextChanged += OffsetTextBox_TextChanged;
-            offsetTextBox.KeyPress += OffsetTextBox_KeyPress;
-            // 
+            //
             // runQueryButton
             // 
             resources.ApplyResources(runQueryButton, "runQueryButton");
@@ -188,7 +150,7 @@ namespace ParquetViewer
             mainGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
             mainGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             mainGridView.ColumnNameEscapeFormat = "[{0}]";
-            mainTableLayoutPanel.SetColumnSpan(mainGridView, 11);
+            mainTableLayoutPanel.SetColumnSpan(mainGridView, 6);
             mainGridView.CopyAsWhereIcon = (System.Drawing.Image)resources.GetObject("mainGridView.CopyAsWhereIcon");
             mainGridView.CopyToClipboardIcon = (System.Drawing.Image)resources.GetObject("mainGridView.CopyToClipboardIcon");
             mainGridView.DateValueEscapeFormat = "#{0}#";
@@ -199,20 +161,7 @@ namespace ParquetViewer
             mainGridView.ShowCellToolTips = false;
             mainGridView.ShowCopyAsWhereContextMenuItem = true;
             mainGridView.DataBindingComplete += MainGridView_DataBindingComplete;
-            // 
-            // loadAllRowsButton
-            // 
-            resources.ApplyResources(loadAllRowsButton, "loadAllRowsButton");
-            loadAllRowsButton.Cursor = Cursors.Hand;
-            loadAllRowsButton.FlatAppearance.BorderSize = 0;
-            loadAllRowsButton.FlatAppearance.MouseOverBackColor = System.Drawing.SystemColors.Control;
-            loadAllRowsButton.Image = Resources.Icons.next_blue;
-            loadAllRowsButton.Name = "loadAllRowsButton";
-            loadAllRowsButtonTooltip.SetToolTip(loadAllRowsButton, resources.GetString("loadAllRowsButton.ToolTip"));
-            loadAllRowsButton.UseVisualStyleBackColor = true;
-            loadAllRowsButton.EnabledChanged += LoadAllRowsButton_EnabledChanged;
-            loadAllRowsButton.Click += LoadAllRowsButton_Click;
-            // 
+            //
             // openParquetFileDialog
             // 
             resources.ApplyResources(openParquetFileDialog, "openParquetFileDialog");
@@ -272,7 +221,7 @@ namespace ParquetViewer
             // 
             // editToolStripMenuItem
             // 
-            editToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { changeFieldsMenuStripButton, changeDateFormatToolStripMenuItem, alwaysLoadAllRecordsToolStripMenuItem, darkModeToolStripMenuItem });
+            editToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { changeFieldsMenuStripButton, goToRowToolStripMenuItem, changeDateFormatToolStripMenuItem, darkModeToolStripMenuItem });
             editToolStripMenuItem.Name = "editToolStripMenuItem";
             resources.ApplyResources(editToolStripMenuItem, "editToolStripMenuItem");
             // 
@@ -281,7 +230,15 @@ namespace ParquetViewer
             resources.ApplyResources(changeFieldsMenuStripButton, "changeFieldsMenuStripButton");
             changeFieldsMenuStripButton.Name = "changeFieldsMenuStripButton";
             changeFieldsMenuStripButton.Click += ChangeFieldsMenuStripButton_Click;
-            // 
+            //
+            // goToRowToolStripMenuItem
+            //
+            goToRowToolStripMenuItem.Enabled = false;
+            goToRowToolStripMenuItem.Name = "goToRowToolStripMenuItem";
+            goToRowToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.G;
+            resources.ApplyResources(goToRowToolStripMenuItem, "goToRowToolStripMenuItem");
+            goToRowToolStripMenuItem.Click += GoToRowToolStripMenuItem_Click;
+            //
             // changeDateFormatToolStripMenuItem
             // 
             changeDateFormatToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { defaultToolStripMenuItem, iSO8601ToolStripMenuItem, customDateFormatToolStripMenuItem });
@@ -308,15 +265,7 @@ namespace ParquetViewer
             resources.ApplyResources(customDateFormatToolStripMenuItem, "customDateFormatToolStripMenuItem");
             customDateFormatToolStripMenuItem.Tag = "6";
             customDateFormatToolStripMenuItem.Click += DateFormatMenuItem_Click;
-            // 
-            // alwaysLoadAllRecordsToolStripMenuItem
-            // 
-            alwaysLoadAllRecordsToolStripMenuItem.Checked = true;
-            alwaysLoadAllRecordsToolStripMenuItem.CheckState = CheckState.Checked;
-            alwaysLoadAllRecordsToolStripMenuItem.Name = "alwaysLoadAllRecordsToolStripMenuItem";
-            resources.ApplyResources(alwaysLoadAllRecordsToolStripMenuItem, "alwaysLoadAllRecordsToolStripMenuItem");
-            alwaysLoadAllRecordsToolStripMenuItem.Click += AlwaysLoadAllRecordsToolStripMenuItem_Click;
-            // 
+            //
             // darkModeToolStripMenuItem
             // 
             darkModeToolStripMenuItem.Name = "darkModeToolStripMenuItem";
@@ -388,52 +337,58 @@ namespace ParquetViewer
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
             resources.ApplyResources(aboutToolStripMenuItem, "aboutToolStripMenuItem");
             aboutToolStripMenuItem.Click += AboutToolStripMenuItem_Click;
-            // 
-            // showingRecordCountStatusBarLabel
-            // 
-            showingRecordCountStatusBarLabel.Name = "showingRecordCountStatusBarLabel";
-            resources.ApplyResources(showingRecordCountStatusBarLabel, "showingRecordCountStatusBarLabel");
-            // 
-            // actualShownRecordCountLabel
-            // 
-            resources.ApplyResources(actualShownRecordCountLabel, "actualShownRecordCountLabel");
-            actualShownRecordCountLabel.Name = "actualShownRecordCountLabel";
-            // 
-            // recordsTextStatusBarLabel
-            // 
-            recordsTextStatusBarLabel.Name = "recordsTextStatusBarLabel";
-            resources.ApplyResources(recordsTextStatusBarLabel, "recordsTextStatusBarLabel");
-            // 
-            // springStatusBarLabel
-            // 
-            springStatusBarLabel.Name = "springStatusBarLabel";
-            resources.ApplyResources(springStatusBarLabel, "springStatusBarLabel");
-            springStatusBarLabel.Spring = true;
-            // 
-            // showingStatusBarLabel
-            // 
-            showingStatusBarLabel.Name = "showingStatusBarLabel";
-            resources.ApplyResources(showingStatusBarLabel, "showingStatusBarLabel");
-            showingStatusBarLabel.Click += ShowingStatusBarLabel_Click;
-            // 
-            // recordCountStatusBarLabel
-            // 
-            resources.ApplyResources(recordCountStatusBarLabel, "recordCountStatusBarLabel");
-            recordCountStatusBarLabel.Name = "recordCountStatusBarLabel";
-            // 
-            // outOfStatusBarLabel
-            // 
-            outOfStatusBarLabel.Name = "outOfStatusBarLabel";
-            resources.ApplyResources(outOfStatusBarLabel, "outOfStatusBarLabel");
-            // 
-            // totalRowCountStatusBarLabel
-            // 
-            resources.ApplyResources(totalRowCountStatusBarLabel, "totalRowCountStatusBarLabel");
-            totalRowCountStatusBarLabel.Name = "totalRowCountStatusBarLabel";
-            // 
+            //
+            // leftSpringStatusBarLabel
+            //
+            leftSpringStatusBarLabel.Name = "leftSpringStatusBarLabel";
+            leftSpringStatusBarLabel.Spring = true;
+            //
+            // previousPageButton
+            //
+            previousPageButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            previousPageButton.Enabled = false;
+            previousPageButton.Name = "previousPageButton";
+            resources.ApplyResources(previousPageButton, "previousPageButton");
+            previousPageButton.Click += PreviousPageButton_Click;
+            //
+            // pageStatusBarLabel
+            //
+            pageStatusBarLabel.Margin = new Padding(8, 3, 0, 2);
+            pageStatusBarLabel.Name = "pageStatusBarLabel";
+            resources.ApplyResources(pageStatusBarLabel, "pageStatusBarLabel");
+            //
+            // pageNumberTextBox
+            //
+            pageNumberTextBox.AutoSize = false;
+            pageNumberTextBox.Enabled = false;
+            pageNumberTextBox.Name = "pageNumberTextBox";
+            pageNumberTextBox.Size = new System.Drawing.Size(70, 23);
+            pageNumberTextBox.TextBoxTextAlign = HorizontalAlignment.Center;
+            pageNumberTextBox.KeyDown += PageNumberTextBox_KeyDown;
+            pageNumberTextBox.KeyPress += PageNumberTextBox_KeyPress;
+            pageNumberTextBox.Leave += PageNumberTextBox_Leave;
+            //
+            // pageCountStatusBarLabel
+            //
+            pageCountStatusBarLabel.Margin = new Padding(0, 3, 8, 2);
+            pageCountStatusBarLabel.Name = "pageCountStatusBarLabel";
+            //
+            // nextPageButton
+            //
+            nextPageButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            nextPageButton.Enabled = false;
+            nextPageButton.Name = "nextPageButton";
+            resources.ApplyResources(nextPageButton, "nextPageButton");
+            nextPageButton.Click += NextPageButton_Click;
+            //
+            // rightSpringStatusBarLabel
+            //
+            rightSpringStatusBarLabel.Name = "rightSpringStatusBarLabel";
+            rightSpringStatusBarLabel.Spring = true;
+            //
             // mainStatusStrip
-            // 
-            mainStatusStrip.Items.AddRange(new ToolStripItem[] { showingRecordCountStatusBarLabel, actualShownRecordCountLabel, recordsTextStatusBarLabel, springStatusBarLabel, showingStatusBarLabel, recordCountStatusBarLabel, outOfStatusBarLabel, totalRowCountStatusBarLabel });
+            //
+            mainStatusStrip.Items.AddRange(new ToolStripItem[] { leftSpringStatusBarLabel, previousPageButton, pageStatusBarLabel, pageNumberTextBox, pageCountStatusBarLabel, nextPageButton, rightSpringStatusBarLabel });
             resources.ApplyResources(mainStatusStrip, "mainStatusStrip");
             mainStatusStrip.Name = "mainStatusStrip";
             mainStatusStrip.ShowItemToolTips = true;
@@ -460,8 +415,8 @@ namespace ParquetViewer
             AllowDrop = true;
             resources.ApplyResources(this, "$this");
             AutoScaleMode = AutoScaleMode.Font;
-            Controls.Add(mainStatusStrip);
             Controls.Add(mainTableLayoutPanel);
+            Controls.Add(mainStatusStrip);
             Controls.Add(mainMenuStrip);
             Icon = Resources.Icons.parquet_icon_32x32;
             KeyPreview = true;
@@ -487,10 +442,6 @@ namespace ParquetViewer
 
         private System.Windows.Forms.TableLayoutPanel mainTableLayoutPanel;
         private System.Windows.Forms.OpenFileDialog openParquetFileDialog;
-        private System.Windows.Forms.Label recordsToLabel;
-        private DelayedOnChangedTextBox recordCountTextBox;
-        private System.Windows.Forms.Label showRecordsFromLabel;
-        private DelayedOnChangedTextBox offsetTextBox;
         private ParquetGridView mainGridView;
         private System.Windows.Forms.MenuStrip mainMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
@@ -502,19 +453,19 @@ namespace ParquetViewer
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem editToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem changeFieldsMenuStripButton;
+        private System.Windows.Forms.ToolStripMenuItem goToRowToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem helpToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.TextBox searchFilterTextBox;
         private System.Windows.Forms.Button runQueryButton;
         private System.Windows.Forms.Button clearFilterButton;
-        private System.Windows.Forms.ToolStripStatusLabel showingRecordCountStatusBarLabel;
-        private System.Windows.Forms.ToolStripStatusLabel actualShownRecordCountLabel;
-        private System.Windows.Forms.ToolStripStatusLabel recordsTextStatusBarLabel;
-        private System.Windows.Forms.ToolStripStatusLabel springStatusBarLabel;
-        private System.Windows.Forms.ToolStripStatusLabel showingStatusBarLabel;
-        private System.Windows.Forms.ToolStripStatusLabel recordCountStatusBarLabel;
-        private System.Windows.Forms.ToolStripStatusLabel outOfStatusBarLabel;
-        private System.Windows.Forms.ToolStripStatusLabel totalRowCountStatusBarLabel;
+        private System.Windows.Forms.ToolStripStatusLabel leftSpringStatusBarLabel;
+        private System.Windows.Forms.ToolStripButton previousPageButton;
+        private System.Windows.Forms.ToolStripStatusLabel pageStatusBarLabel;
+        private System.Windows.Forms.ToolStripTextBox pageNumberTextBox;
+        private System.Windows.Forms.ToolStripStatusLabel pageCountStatusBarLabel;
+        private System.Windows.Forms.ToolStripButton nextPageButton;
+        private System.Windows.Forms.ToolStripStatusLabel rightSpringStatusBarLabel;
         private System.Windows.Forms.StatusStrip mainStatusStrip;
         private System.Windows.Forms.LinkLabel searchFilterLabel;
         private System.Windows.Forms.SaveFileDialog exportFileDialog;
@@ -525,12 +476,9 @@ namespace ParquetViewer
         private System.Windows.Forms.ToolStripMenuItem toolsToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem getSQLCreateTableScriptToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem metadataViewerToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem alwaysLoadAllRecordsToolStripMenuItem;
         private System.Windows.Forms.FolderBrowserDialog openFolderDialog;
         private System.Windows.Forms.ToolStripMenuItem openFolderToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem shareAnonymousUsageDataToolStripMenuItem;
-        private System.Windows.Forms.Button loadAllRowsButton;
-        private ToolTip loadAllRowsButtonTooltip;
         private ToolStripMenuItem customDateFormatToolStripMenuItem;
         private ToolStripMenuItem darkModeToolStripMenuItem;
         private ToolStripMenuItem languageToolStripMenuItem;

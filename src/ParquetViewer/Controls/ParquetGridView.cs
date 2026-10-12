@@ -62,6 +62,37 @@ public class ParquetGridView : DataGridView
     private readonly Dictionary<string, IByteArrayValue.DisplayFormat> _byteArrayColumnsWithFormatOverrides = [];
     private readonly Dictionary<string, FloatDisplayFormat> _floatColumnsWithFormatOverrides = [];
 
+    private const int DEFAULT_ROW_HEADERS_WIDTH = 24;
+    private const int ROW_HEADER_GLYPH_WIDTH = 20; //Leave room for the current row indicator
+
+    /// <summary>
+    /// Name of a hidden column in the data source holding each row's position in the file.
+    /// The column is never shown and its values are drawn in the row headers instead.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string? RowIndexColumnName { get; set; }
+
+    private bool _allowColumnSorting = true;
+    /// <summary>
+    /// Sorting only makes sense when all rows are loaded. Otherwise only the rows currently in memory would get sorted.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool AllowColumnSorting
+    {
+        get => _allowColumnSorting;
+        set
+        {
+            _allowColumnSorting = value;
+            foreach (DataGridViewColumn column in Columns)
+            {
+                if (!IsRowIndexColumn(column))
+                    column.SortMode = GetColumnSortMode();
+            }
+        }
+    }
+
     public ParquetGridView() : base()
     {
         DoubleBuffered = true; //Set DGV to be double buffered for smoother loading and scrolling
@@ -83,6 +114,12 @@ public class ParquetGridView : DataGridView
     {
         _clickableColumnIndexes.Clear();
         base.OnDataSourceChanged(e); //This runs OnColumnAdded() for all columns before continuing.
+
+        foreach (DataGridViewColumn column in Columns)
+        {
+            if (IsRowIndexColumn(column))
+                column.Visible = false;
+        }
 
         ConvertAudioCells();
         SetColumnCellStyles();
@@ -202,6 +239,7 @@ public class ParquetGridView : DataGridView
     {
         base.OnCellMouseMove(e);
         if (e.RowIndex == -1 && e.ColumnIndex > -1 //cursor is hovering over column headers.
+            && AllowColumnSorting
             && Cursor == Cursors.Default /*don't show hand if user is resizing columns for example*/)
         {
             //Since columns are sortable, show hand cursor on column headers
@@ -323,7 +361,7 @@ public class ParquetGridView : DataGridView
 
         //Checkbox columns aren't sortable by default for some reason.
         //https://stackoverflow.com/q/14979848/1458738
-        e.Column.SortMode = DataGridViewColumnSortMode.Automatic;
+        e.Column.SortMode = IsRowIndexColumn(e.Column) ? DataGridViewColumnSortMode.NotSortable : GetColumnSortMode();
 
         base.OnColumnAdded(e);
     }
@@ -491,6 +529,46 @@ public class ParquetGridView : DataGridView
 
         base.OnKeyDown(e);
     }
+
+    protected override void OnRowPostPaint(DataGridViewRowPostPaintEventArgs e)
+    {
+        base.OnRowPostPaint(e);
+
+        if (!RowHeadersVisible || e.RowIndex < 0 || RowIndexColumnName is null
+            || DataSource is not DataTable dataTable || !dataTable.Columns.Contains(RowIndexColumnName))
+            return;
+
+        //Read through the data view instead of the grid's rows to avoid unsharing them
+        var dataView = dataTable.DefaultView;
+        if (e.RowIndex >= dataView.Count || dataView[e.RowIndex][RowIndexColumnName] is not long rowIndex)
+            return;
+
+        var isSelected = (e.State & DataGridViewElementStates.Selected) != 0;
+        var textColor = isSelected ? Color.White : RowHeadersDefaultCellStyle.ForeColor;
+        if (textColor.IsEmpty)
+            textColor = ForeColor;
+
+        var textBounds = new Rectangle(e.RowBounds.Left + ROW_HEADER_GLYPH_WIDTH, e.RowBounds.Top,
+            RowHeadersWidth - ROW_HEADER_GLYPH_WIDTH - 4, e.RowBounds.Height);
+        //Row numbers shown to the user start at 1
+        TextRenderer.DrawText(e.Graphics, (rowIndex + 1).ToString(CultureInfo.InvariantCulture), Font, textBounds, textColor,
+            TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+    }
+
+    /// <summary>
+    /// Widens the row headers so row numbers up to <paramref name="rowCount"/> fit
+    /// </summary>
+    public void FitRowHeadersToRowCount(long rowCount)
+    {
+        var textWidth = TextRenderer.MeasureText(Math.Max(rowCount, 1).ToString(CultureInfo.InvariantCulture), Font).Width;
+        RowHeadersWidth = Math.Max(DEFAULT_ROW_HEADERS_WIDTH, ROW_HEADER_GLYPH_WIDTH + textWidth + 8);
+    }
+
+    private bool IsRowIndexColumn(DataGridViewColumn column)
+        => RowIndexColumnName is not null && column.DataPropertyName.Equals(RowIndexColumnName, StringComparison.OrdinalIgnoreCase);
+
+    private DataGridViewColumnSortMode GetColumnSortMode()
+        => AllowColumnSorting ? DataGridViewColumnSortMode.Automatic : DataGridViewColumnSortMode.NotSortable;
 
     protected override void OnCellFormatting(DataGridViewCellFormattingEventArgs e)
     {
@@ -720,6 +798,9 @@ public class ParquetGridView : DataGridView
             if (forceAutoSizeColumnIndex is not null && forceAutoSizeColumnIndex != i)
                 continue;
 
+            if (IsRowIndexColumn(Columns[i]))
+                continue;
+
             //Don't autosize the same column twice
             if (forceAutoSizeColumnIndex is null && Columns[i].Tag is string tag && tag.Equals("AUTOSIZED"))
                 continue;
@@ -947,6 +1028,7 @@ public class ParquetGridView : DataGridView
         var columnsAndValuesToFilterBy = new List<(string ColumnName, Type ValueType, object[] Values)>();
         foreach (var selectedCellsByColumn in
             SelectedCells.AsEnumerable()
+            .Where(cell => !IsRowIndexColumn(Columns[cell.ColumnIndex]))
             .GroupBy(cell => cell.ColumnIndex)
             .OrderBy(column => column.Key))
         {

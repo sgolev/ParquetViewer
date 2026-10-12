@@ -117,10 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="LoadedRecordCountRangeFormat" xml:space="preserve">
-    <value>{0} to {1}</value>
-    <comment>This is the value shown in the bottom right status bar once records are loaded from a parquet file. Example: "0 to 1000"</comment>
-  </data>
   <data name="LoadingDataLabelText" xml:space="preserve">
     <value>Loading Data</value>
     <comment>Text shown when data is being loaded from a parquet file</comment>
@@ -409,5 +405,41 @@ You can always toggle this on/off from the Edit menu.</value>
   <data name="WordWrapContextMenuItemText" xml:space="preserve">
     <value>Wrap Text</value>
     <comment>Right click context menu item shown when a column has cut off text and the user right clicks the column header.</comment>
+  </data>
+  <data name="GoToRowFormTitle" xml:space="preserve">
+    <value>Go To Row</value>
+    <comment>Title of the dialog that lets the user jump to a specific row</comment>
+  </data>
+  <data name="GoToRowLabelTextFormat" xml:space="preserve">
+    <value>Row number (1 - {0}):</value>
+    <comment>Label in the Go To Row dialog. {0} is the last row number (row numbers start at 1)</comment>
+  </data>
+  <data name="GoToMatchLabelTextFormat" xml:space="preserve">
+    <value>Match number (1 - {0}):</value>
+    <comment>Label in the Go To Row dialog when a filter query is active. {0} is the last match number, or the number of matches found so far followed by a + if the query is still scanning the file (match numbers start at 1)</comment>
+  </data>
+  <data name="GoToRowButtonText" xml:space="preserve">
+    <value>Go</value>
+    <comment>Button in the Go To Row dialog that jumps to the entered row</comment>
+  </data>
+  <data name="SearchingForMatchesLabelText" xml:space="preserve">
+    <value>Searching for matches</value>
+    <comment>Loading message shown while the filter query scans the file for matching rows</comment>
+  </data>
+  <data name="MatchingRecordsToBeExportedTitle" xml:space="preserve">
+    <value>Rows matching the current query will be exported</value>
+    <comment>Title shown on the save file dialog when exporting the results of a filter query whose match count isn't known yet</comment>
+  </data>
+  <data name="PageCountFormat" xml:space="preserve">
+    <value>of {0:N0} ({1:N0} rows)</value>
+    <comment>Status bar text shown after the page number box. {0} is the number of pages, {1} the number of rows</comment>
+  </data>
+  <data name="PageCountIncompleteFormat" xml:space="preserve">
+    <value>of {0:N0}+ ({1:N0}+ rows)</value>
+    <comment>Status bar text shown after the page number box while a filter query is still scanning the file, so the totals aren't known yet. {0} is the number of pages found so far, {1} the number of matching rows found so far</comment>
+  </data>
+  <data name="SortingUnavailableToolTip" xml:space="preserve">
+    <value>Sorting is only available when all rows fit on a single page.</value>
+    <comment>Tooltip on the status bar page count when column sorting is disabled because the results span multiple pages</comment>
   </data>
 </root>

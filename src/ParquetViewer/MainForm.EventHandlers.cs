@@ -23,40 +23,6 @@ public partial class MainForm
 
     private int _failedFileIntegrityCheckCount;
 
-    private void OffsetTextBox_KeyPress(object sender, KeyPressEventArgs e)
-    {
-        if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-        {
-            e.Handled = true;
-        }
-    }
-
-    private void RecordsToTextBox_KeyPress(object sender, KeyPressEventArgs e)
-    {
-        if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-        {
-            e.Handled = true;
-        }
-    }
-
-    private void OffsetTextBox_TextChanged(object sender, EventArgs e)
-    {
-        var textbox = (TextBox)sender;
-        if (int.TryParse(textbox.Text, out var offset))
-            CurrentOffset = offset;
-        else
-            textbox.Text = CurrentOffset.ToString();
-    }
-
-    private void RecordsToTextBox_TextChanged(object sender, EventArgs? e)
-    {
-        var textbox = (TextBox)sender;
-        if (int.TryParse(textbox.Text, out var recordCount) && recordCount > 0)
-            CurrentMaxRowCount = recordCount;
-        else
-            textbox.Text = CurrentMaxRowCount.ToString();
-    }
-
     private void SearchFilterTextBox_KeyPress(object sender, KeyPressEventArgs e)
     {
         if (e.KeyChar == Convert.ToChar(Keys.Return))
@@ -82,7 +48,7 @@ public partial class MainForm
         }
         catch
         {
-            OpenFileOrFolderPath = null;
+            await CloseCurrentFileAsync();
             throw;
         }
     }
@@ -100,12 +66,7 @@ public partial class MainForm
 
     private void MainGridView_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
     {
-        actualShownRecordCountLabel.Text = mainGridView.RowCount.ToString();
-    }
-
-    private void ShowingStatusBarLabel_Click(object sender, EventArgs e)
-    {
-        //This is just here in case I want to add debug info
+        UpdatePager();
     }
 
     private void SearchFilterTextBox_Enter(object sender, EventArgs e)
@@ -130,70 +91,55 @@ public partial class MainForm
         }
     }
 
-    private void LoadAllRowsButton_EnabledChanged(object sender, EventArgs e)
-    {
-        if (sender is Button loadAllRecordsButton)
-        {
-            loadAllRecordsButton.FlatAppearance.MouseOverBackColor = Color.Transparent;
-            loadAllRecordsButton.FlatAppearance.MouseDownBackColor = Color.Transparent;
-
-            if (loadAllRecordsButton.Enabled)
-            {
-                loadAllRecordsButton.Image = Resources.Icons.next_blue;
-            }
-            else
-            {
-                loadAllRecordsButton.Image = Resources.Icons.next_disabled;
-            }
-        }
-    }
-
-    private void LoadAllRowsButton_Click(object? sender, EventArgs? e)
-    {
-        if (_openParquetEngine is not null)
-        {
-            //Force file reload to happen instantly by triggering the event handler ourselves
-            recordCountTextBox.SetTextQuiet(_openParquetEngine.RecordCount.ToString());
-            RecordsToTextBox_TextChanged(recordCountTextBox, null);
-            MenuBarClickEvent.FireAndForget(MenuBarClickEvent.ActionId.LoadAllRows);
-        }
-    }
-
     private void MainForm_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Control && e.KeyCode == Keys.E && loadAllRowsButton.Enabled)
-        {
-            LoadAllRowsButton_Click(null, null);
-        }
-        else if (e.Control && e.KeyCode == Keys.R && _openParquetEngine is not null) //Reload shortcut
+        if (e.Control && e.KeyCode == Keys.R && _openParquetEngine is not null) //Reload shortcut
         {
             LoadFileToGridview();
         }
     }
 
-    private void RunQueryButton_Click(object sender, EventArgs? e)
+    /// <summary>
+    /// Converts the user's query into a <see cref="DataView.RowFilter"/> expression
+    /// </summary>
+    private string BuildRowFilter(string queryText)
     {
+        queryText = QueryUselessPartRegex().Replace(queryText, string.Empty).Trim();
+
+        //Treat list, map, and struct types as strings by casting them automatically
+        foreach (var complexField in GetUserColumns()
+            .Where(c => c.DataType.ImplementsInterface<IListValue>() || c.DataType.ImplementsInterface<IMapValue>()
+                || c.DataType.ImplementsInterface<IStructValue>() || c.DataType.ImplementsInterface<IByteArrayValue>())
+            .Select(c => c.ColumnName))
+        {
+            //This isn't perfect but it should handle most cases
+            queryText = queryText.Replace(complexField, $"CONVERT({complexField}, System.String)", StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        return queryText;
+    }
+
+    private async void RunQueryButton_Click(object sender, EventArgs? e)
+    {
+        if (!IsAnyFileOpen || MainDataSource is null || _pageSource is null)
+            return;
+
+        string queryText = BuildRowFilter(searchFilterTextBox.Text ?? string.Empty);
         try
         {
-            if (!IsAnyFileOpen || MainDataSource is null)
-                return;
-
-            string queryText = searchFilterTextBox.Text ?? string.Empty;
-            queryText = QueryUselessPartRegex().Replace(queryText, string.Empty).Trim();
-
-            //Treat list, map, and struct types as strings by casting them automatically
-            foreach (var complexField in mainGridView.Columns.OfType<DataGridViewColumn>()
-                .Where(c => c.ValueType.ImplementsInterface<IListValue>() || c.ValueType.ImplementsInterface<IMapValue>()
-                    || c.ValueType.ImplementsInterface<IStructValue>() || c.ValueType.ImplementsInterface<IByteArrayValue>())
-                .Select(c => c.Name))
+            var currentRowFilter = _pageSource is FilteredPageSource filteredPageSource
+                ? filteredPageSource.RowFilter
+                : MainDataSource.DefaultView.RowFilter;
+            if (string.IsNullOrWhiteSpace(queryText)
+                || currentRowFilter == queryText) //No need to execute the same query again
             {
-                //This isn't perfect but it should handle most cases
-                queryText = queryText.Replace(complexField, $"CONVERT({complexField}, System.String)", StringComparison.InvariantCultureIgnoreCase);
+                return;
             }
 
-            if (string.IsNullOrWhiteSpace(queryText)
-                || MainDataSource.DefaultView.RowFilter == queryText) //No need to execute the same query again
+            if (!_isFullLoad || IsWholeFileQueryActive)
             {
+                //Not all rows are in memory so the query needs to scan the file
+                await RunWholeFileQueryAsync(queryText);
                 return;
             }
 
@@ -201,7 +147,7 @@ public partial class MainForm
             var queryEvent = new ExecuteQueryEvent
             {
                 RecordCountTotal = MainDataSource.Rows.Count,
-                ColumnCount = MainDataSource.Columns.Count
+                ColumnCount = GetUserColumns().Count()
             };
 
             try
@@ -221,35 +167,86 @@ public partial class MainForm
                 Cursor = Cursors.Default;
                 queryEvent.RunTimeMS = stopwatch.ElapsedMilliseconds;
                 var _ = queryEvent.Record(); //Fire and forget
-                actualShownRecordCountLabel.Text = MainDataSource.DefaultView.Count.ToString();
+                UpdatePager();
             }
         }
-        catch (InvalidQueryException ex)
+        catch (Exception ex)
         {
-            MessageBox.Show(ex.Message + Environment.NewLine + Environment.NewLine + ex.InnerException?.Message,
-                Resources.Errors.InvalidQueryErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-        catch (Exception)
-        {
-            throw;
+            await HandleReadExceptionAsync(ex, queryText, 0);
         }
     }
 
-    private void ClearFilterButton_Click(object sender, EventArgs? e)
-    {
-        if (!string.IsNullOrEmpty(MainDataSource?.DefaultView.RowFilter))
-        {
-            try
-            {
-                Cursor = Cursors.WaitCursor;
-                MainDataSource.DefaultView.RowFilter = null;
-            }
-            finally
-            {
-                Cursor = Cursors.Default;
-                actualShownRecordCountLabel.Text = MainDataSource.DefaultView.Count.ToString();
+    private static void ShowInvalidQueryError(InvalidQueryException ex)
+        => MessageBox.Show(ex.Message + Environment.NewLine + Environment.NewLine + ex.InnerException?.Message,
+            Resources.Errors.InvalidQueryErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
+    private async void ClearFilterButton_Click(object sender, EventArgs? e)
+    {
+        try
+        {
+            if (IsWholeFileQueryActive)
+            {
+                await ClearWholeFileQueryAsync();
             }
+            else if (!string.IsNullOrEmpty(MainDataSource?.DefaultView.RowFilter))
+            {
+                try
+                {
+                    Cursor = Cursors.WaitCursor;
+                    MainDataSource.DefaultView.RowFilter = null;
+                }
+                finally
+                {
+                    Cursor = Cursors.Default;
+                    UpdatePager();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleReadExceptionAsync(ex, null, 0);
+        }
+    }
+
+    private async void GoToRowToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        if (!IsAnyFileOpen || MainDataSource is null || _pageSource is null)
+            return;
+
+        var isQueryActive = IsWholeFileQueryActive || !string.IsNullOrEmpty(MainDataSource.DefaultView.RowFilter);
+        long maxRowIndex;
+        long? knownMatchCount = null;
+        if (_isFullLoad && isQueryActive)
+        {
+            maxRowIndex = MainDataSource.DefaultView.Count - 1;
+        }
+        else if (_pageSource is FilteredPageSource filteredPageSource)
+        {
+            //Until the whole file is scanned all we know is it can't have more matches than rows
+            maxRowIndex = (filteredPageSource.IsComplete ? filteredPageSource.KnownRowCount : filteredPageSource.RecordCount) - 1;
+            knownMatchCount = filteredPageSource.IsComplete ? null : filteredPageSource.KnownRowCount;
+        }
+        else
+        {
+            maxRowIndex = _pageSource.RecordCount - 1;
+        }
+
+        var currentRowIndex = Math.Max(mainGridView.CurrentCell?.RowIndex ?? 0, 0);
+        var initialRowIndex = isQueryActive
+            ? (_isFullLoad ? 0 : (long)_currentPageIndex * PAGE_SIZE) + currentRowIndex
+            : GetRowIndexValue(currentRowIndex) ?? 0;
+
+        using var goToRowForm = new GoToRowForm(maxRowIndex, initialRowIndex, isQueryActive, knownMatchCount);
+        if (goToRowForm.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        try
+        {
+            await JumpToRowAsync(goToRowForm.SelectedRowIndex);
+        }
+        catch (Exception ex)
+        {
+            await HandleReadExceptionAsync(ex, (_pageSource as FilteredPageSource)?.RowFilter, (int)(goToRowForm.SelectedRowIndex / PAGE_SIZE));
         }
     }
 

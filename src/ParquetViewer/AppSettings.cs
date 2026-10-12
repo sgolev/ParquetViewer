@@ -1,4 +1,4 @@
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using ParquetViewer.Controls;
 using ParquetViewer.Helpers;
 using System;
@@ -15,7 +15,6 @@ public static class AppSettings
     private const string CONSENT_LAST_ASKED_ON_VERSION = "ConsentLastAskedOnVersion";
     private const string ANALYTICS_DEVICE_ID = "AnalyticsDeviceId";
     private const string ANALYTICS_DATA_GATHERING_CONSENT = "AnalyticsDataGatheringConsent";
-    private const string ALWAYS_LOAD_ALL_RECORDS = "AlwaysLoadAllRecords";
     private const string OPENED_FILE_COUNT = "OpenedFileCount";
     private const string CUSTOM_DATE_FORMAT = "CustomDateFormat";
     private const string DARK_MODE = "DarkMode";
@@ -31,12 +30,6 @@ public static class AppSettings
     {
         get => ReadRegistryValue(ALWAYS_SELECT_ALL_FIELDS, out string? temp) && bool.TryParse(temp, out var value) && value;
         set => SetRegistryValue(ALWAYS_SELECT_ALL_FIELDS, value.ToString());
-    }
-
-    public static bool AlwaysLoadAllRecords
-    {
-        get => ReadRegistryValue(ALWAYS_LOAD_ALL_RECORDS, out string? temp) && bool.TryParse(temp, out var value) && value;
-        set => SetRegistryValue(ALWAYS_LOAD_ALL_RECORDS, value.ToString());
     }
 
     public static SemanticVersion? ConsentLastAskedOnVersion

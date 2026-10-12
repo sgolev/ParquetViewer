@@ -3,18 +3,22 @@ using System.Collections;
 
 namespace ParquetViewer.Engine.ParquetNET;
 
-public class ListValueBuilder
+internal class ListValueBuilder
 {
     private readonly int[] _repetitionLevels;
     private readonly int[] _definitionLevels;
-    private readonly IEnumerable<object> _data;
+    private readonly PaddedColumnView _data;
+    private readonly int[] _rowStarts;
     private readonly Type _type;
 
-    public ListValueBuilder(int[] repetitionLevels, int[] definitionLevels, IEnumerable<object> data, Type type)
+    /// <param name="data">Column data padded to line up with the repetition/definition levels</param>
+    /// <param name="rowStarts">Level indexes where each row begins (repetition level 0)</param>
+    internal ListValueBuilder(int[] repetitionLevels, int[] definitionLevels, PaddedColumnView data, int[] rowStarts, Type type)
     {
         ArgumentNullException.ThrowIfNull(definitionLevels);
         ArgumentNullException.ThrowIfNull(repetitionLevels);
         ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(rowStarts);
         ArgumentNullException.ThrowIfNull(type);
 
         if (type == typeof(byte[]))
@@ -26,24 +30,7 @@ public class ListValueBuilder
         _definitionLevels = definitionLevels;
         _repetitionLevels = repetitionLevels;
         _data = data;
-    }
-
-    private IEnumerable<Range> GetRowRanges()
-    {
-        int startIndex = 0;
-        int endIndex = 0;
-        for (int i = 1; i < _repetitionLevels.Length; i++)
-        {
-            if (_repetitionLevels[i] == 0)
-            {
-                endIndex = i;
-                yield return new(startIndex, endIndex);
-
-                startIndex = i;
-            }
-        }
-
-        yield return new(startIndex, _repetitionLevels.Length);
+        _rowStarts = rowStarts;
     }
 
     /// <summary>
@@ -52,20 +39,23 @@ public class ListValueBuilder
     /// <returns>Enumerable of ListValue's. We need to return object to support DBNull.Value</returns>
     public IEnumerable<object> ReadRows(int skipRecords, int readRecords, int numberOfListParents, int currentDefinitionLevel, int _ /*MaxDefinitionLevel*/, CancellationToken cancellationToken)
     {
-        var ranges = GetRowRanges();
-
-        var rowRangesToRead = ranges.Skip(skipRecords).Take(readRecords);
-        foreach (var rowRange in rowRangesToRead)
+        long lastRow = Math.Min((long)skipRecords + readRecords, _rowStarts.Length);
+        for (int row = skipRecords; row < lastRow; row++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var listValue = ReadListValue(rowRange, numberOfListParents, () =>
+
+            var rowStart = _rowStarts[row];
+            var rowEnd = row + 1 < _rowStarts.Length ? _rowStarts[row + 1] : _repetitionLevels.Length;
+            var listValue = ReadListValue(new Range(rowStart, rowEnd), numberOfListParents, () =>
             {
-                //TODO: optimize to avoid skipping all rows every time
-                return _data
-                .Select(data => data is byte[] bytes ? new ByteArrayValue(bytes) : data) //Need to handle byte array type separately
-                .Skip(rowRange.Start.Value)
-                .Take(rowRange.End.Value - rowRange.Start.Value)
-                .ToArray();
+                var dataEnd = Math.Min(rowEnd, _data.Length);
+                var rangeData = new object[Math.Max(dataEnd - rowStart, 0)];
+                for (var i = 0; i < rangeData.Length; i++)
+                {
+                    var data = _data[rowStart + i];
+                    rangeData[i] = data is byte[] bytes ? new ByteArrayValue(bytes) : data; //Need to handle byte array type separately
+                }
+                return rangeData;
             },
             (int index) =>
             {

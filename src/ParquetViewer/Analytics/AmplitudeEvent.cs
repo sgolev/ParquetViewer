@@ -31,7 +31,6 @@ public abstract class AmplitudeEvent
     [JsonIgnore]
     public static object UserProperties => new
     {
-        AppSettings.AlwaysLoadAllRecords,
         AppSettings.AlwaysSelectAllFields,
         DateTimeDisplayFormat = AppSettings.DateTimeDisplayFormat.ToString(),
         SystemMemory = _systemRAM,

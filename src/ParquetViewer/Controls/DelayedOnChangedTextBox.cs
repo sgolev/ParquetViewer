@@ -6,7 +6,6 @@ namespace ParquetViewer.Controls;
 
 public class DelayedOnChangedTextBox : TextBox
 {
-    private bool _skipNextTextChange = false;
     private Timer? _delayedTextChangedTimer;
 
     public event EventHandler? DelayedTextChanged;
@@ -45,29 +44,8 @@ public class DelayedOnChangedTextBox : TextBox
 
     protected override void OnTextChanged(EventArgs e)
     {
-        if (_skipNextTextChange)
-        {
-            _skipNextTextChange = false;
-        }
-        else
-        {
-            InitializeDelayedTextChangedEvent();
-        }
-
+        InitializeDelayedTextChangedEvent();
         base.OnTextChanged(e);
-    }
-
-    /// <summary>
-    /// Sets the Text value of the textbox without triggering the text changed event
-    /// </summary>
-    /// <param name="text">New value to set as the textbox's text</param>
-    public void SetTextQuiet(string text)
-    {
-        if (!Text.Equals(text)) //don't change value if it's the same because OnTextChanged won't get triggered
-        {
-            _skipNextTextChange = true;
-            Text = text;
-        }
     }
 
     private void InitializeDelayedTextChangedEvent()

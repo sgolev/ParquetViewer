@@ -474,5 +474,23 @@ namespace ParquetViewer.Resources {
                 return ResourceManager.GetString("UnsupportedExportTypeFormat", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Too many rows.
+        /// </summary>
+        internal static string ExportRowLimitExceededErrorTitle {
+            get {
+                return ResourceManager.GetString("ExportRowLimitExceededErrorTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The {0} file format supports a maximum of {1:N0} rows..
+        /// </summary>
+        internal static string ExportRowLimitExceededErrorMessageFormat {
+            get {
+                return ResourceManager.GetString("ExportRowLimitExceededErrorMessageFormat", resourceCulture);
+            }
+        }
     }
 }

@@ -125,7 +125,6 @@ public class MenuBarClickEvent : AmplitudeEvent
         AboutBox,
         UserGuide,
         DragDrop,
-        LoadAllRows,
     }
 }
 

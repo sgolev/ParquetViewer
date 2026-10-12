@@ -201,7 +201,7 @@ public sealed class ParquetEngine : IParquetEngine
         Helpers.EZDispose(_dbs);
     }
 
-    private async IAsyncEnumerable<DuckDBDataReader> QueryDataAsync(List<string> selectedFields, int offset, int recordCount)
+    private async IAsyncEnumerable<DuckDBDataReader> QueryDataAsync(List<string> selectedFields, long offset, int recordCount)
     {
         var fields = string.Join(", ", selectedFields.Select(MakeColumnSafe));
         foreach ((DuckDBHandle db, ParquetMetadata metadata) in Helpers.PairEnumerables(_dbs, _metadatas))
@@ -233,7 +233,7 @@ public sealed class ParquetEngine : IParquetEngine
         }
     }
 
-    public async Task<Func<bool, DataTable>> ReadRowsAsync(List<string> selectedFields, int offset, int recordCount, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<Func<bool, DataTable>> ReadRowsAsync(List<string> selectedFields, long offset, int recordCount, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(recordCount, nameof(recordCount));
         ArgumentOutOfRangeException.ThrowIfNegative(offset, nameof(offset));
@@ -453,7 +453,7 @@ public sealed class ParquetEngine : IParquetEngine
         return $"\"{safeName}\"";
     }
 
-    public async Task WriteDataToParquetFileAsync(DataTable dataTable, string path, IProgress<int> progress,
+    public async Task WriteDataToParquetFileAsync(IAsyncEnumerable<DataTable> dataChunks, string path, IProgress<int> progress,
         Dictionary<string, string>? customMetadata, CancellationToken cancellationToken)
         => throw new NotImplementedException();
 

@@ -307,4 +307,14 @@ If you think the file is valid please consider opening an issue in the GitHub re
     <value>Error rendering results</value>
     <comment>Shown when values can't be converted/shown in the Query Editor page</comment>
   </data>
+  <data name="ExportRowLimitExceededErrorTitle" xml:space="preserve">
+    <value>Too many rows</value>
+    <comment>Shown when the user tries to export more rows than the Excel file format supports</comment>
+  </data>
+  <data name="ExportRowLimitExceededErrorMessageFormat" xml:space="preserve">
+    <value>The {0} file format supports a maximum of {1:N0} rows.
+
+This export has {2} rows. Please export to CSV, JSON or Parquet instead.</value>
+    <comment>Shown when the user tries to export more rows than the Excel file format supports. {0} is the file extension, {1} the row limit, {2} the row count. {2} ends with a + when the count is only the number of rows found so far</comment>
+  </data>
 </root>

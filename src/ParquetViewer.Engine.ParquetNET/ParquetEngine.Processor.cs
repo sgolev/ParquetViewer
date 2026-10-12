@@ -10,13 +10,13 @@ namespace ParquetViewer.Engine.ParquetNET;
 
 public partial class ParquetEngine
 {
-    public async Task<Func<bool, DataTable>> ReadRowsAsync(List<string> selectedFields, int offset, int recordCount, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<Func<bool, DataTable>> ReadRowsAsync(List<string> selectedFields, long offset, int recordCount, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(recordCount, nameof(recordCount));
         ArgumentOutOfRangeException.ThrowIfNegative(offset, nameof(offset));
 
         long recordsLeftToRead = recordCount;
-        DataTableLite result = BuildDataTable(null, selectedFields, Math.Min(recordCount, (int)RecordCount));
+        DataTableLite result = BuildDataTable(null, selectedFields, (int)Math.Clamp(RecordCount - offset, 0, recordCount));
 
         foreach (var reader in GetReaders(offset))
         {
@@ -30,6 +30,10 @@ public partial class ParquetEngine
 
         result.DataSetSize = RecordCount;
 
+        //Reading everything at once means there are no further pages that could reuse the decoded columns
+        if (offset == 0 && recordCount >= RecordCount)
+            _columnCache.Clear();
+
         return (logProgress) =>
         {
             var datatable = result.ToDataTable(cancellationToken, logProgress ? progress : null);
@@ -41,19 +45,20 @@ public partial class ParquetEngine
         long offset, long recordCount, CancellationToken cancellationToken, IProgress<int>? progress)
     {
         //Read column by column to generate each row in the datatable
-        int totalRecordCountSoFar = 0;
+        long totalRecordCountSoFar = 0;
         long rowsLeftToRead = recordCount;
         for (int i = 0; i < parquetReader.RowGroupCount; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            using var groupReader = parquetReader.OpenRowGroupReader(i);
-            if (groupReader.RowCount > int.MaxValue)
+            using var parquetGroupReader = parquetReader.OpenRowGroupReader(i);
+            if (parquetGroupReader.RowCount > int.MaxValue)
                 throw new ArgumentOutOfRangeException(
-                    string.Format("Cannot handle row group sizes greater than {0}. Found {1} instead.", int.MaxValue, groupReader.RowCount));
+                    string.Format("Cannot handle row group sizes greater than {0}. Found {1} instead.", int.MaxValue, parquetGroupReader.RowCount));
 
-            int rowsPassedUntilThisRowGroup = totalRecordCountSoFar;
-            totalRecordCountSoFar += (int)groupReader.RowCount;
+            var groupReader = new CachedRowGroupReader(parquetGroupReader, parquetReader, i, _columnCache);
+            long rowsPassedUntilThisRowGroup = totalRecordCountSoFar;
+            totalRecordCountSoFar += groupReader.RowCount;
 
             if (offset >= totalRecordCountSoFar)
                 continue;
@@ -72,7 +77,7 @@ public partial class ParquetEngine
         return rowsLeftToRead;
     }
 
-    private async Task ProcessRowGroup(DataTableLite dataTable, ParquetRowGroupReader groupReader,
+    private async Task ProcessRowGroup(DataTableLite dataTable, CachedRowGroupReader groupReader,
         long skipRecords, long readRecords, CancellationToken cancellationToken, IProgress<int>? progress)
     {
         int rowBeginIndex = dataTable.Rows.Count;
@@ -112,11 +117,10 @@ public partial class ParquetEngine
         }
     }
 
-    private async Task ReadPrimitiveField(DataTableLite dataTable, ParquetRowGroupReader groupReader, int rowBeginIndex, ParquetSchemaElement field,
+    private async Task ReadPrimitiveField(DataTableLite dataTable, CachedRowGroupReader groupReader, int rowBeginIndex, ParquetSchemaElement field,
         long skipRecords, long readRecords, bool isFirstColumn, CancellationToken cancellationToken, IProgress<int>? progress)
     {
         var rowIndex = rowBeginIndex;
-        int skippedRecords = 0;
         var fieldIndex = dataTable.Columns[field.Path]?.Ordinal ?? throw new ParquetEngineException($"Column `{field.Path}` is missing");
 
         if (field.BelongsToListField || field.BelongsToListOfStructsField || field.DataField?.IsArray == true)
@@ -125,23 +129,16 @@ public partial class ParquetEngine
         }
         else
         {
-            var dataColumn = await ReadColumnAsync(groupReader, field, cancellationToken);
-            var dataEnumerable = dataColumn.GetDataWithPaddedNulls(field);
+            var cachedColumn = await groupReader.GetColumnAsync(field, cancellationToken);
+            var paddedData = cachedColumn.GetPaddedView(field);
 
             var fieldType = dataTable.Columns[field.Path].Type;
-            foreach (var value in dataEnumerable)
+            long endIndex = Math.Min(skipRecords + readRecords, paddedData.Length);
+            for (long dataIndex = skipRecords; dataIndex < endIndex; dataIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (skipRecords > skippedRecords)
-                {
-                    skippedRecords++;
-                    continue;
-                }
-
-                if (rowIndex - rowBeginIndex >= readRecords)
-                    break;
-
+                var value = paddedData[(int)dataIndex];
                 if (isFirstColumn)
                 {
                     dataTable.NewRow();
@@ -166,7 +163,7 @@ public partial class ParquetEngine
         }
     }
 
-    private async Task ReadListField(DataTableLite dataTable, ParquetRowGroupReader groupReader, int rowBeginIndex, ParquetSchemaElement itemField, int fieldIndex,
+    private async Task ReadListField(DataTableLite dataTable, CachedRowGroupReader groupReader, int rowBeginIndex, ParquetSchemaElement itemField, int fieldIndex,
         long skipRecords, long readRecords, bool isFirstColumn, CancellationToken cancellationToken, IProgress<int>? progress)
     {
         var lastMilestone = "Start";
@@ -185,17 +182,17 @@ public partial class ParquetEngine
             {
                 int rowIndex = rowBeginIndex;
 
-                var dataColumn = await ReadColumnAsync(groupReader, itemField, cancellationToken);
+                var cachedColumn = await groupReader.GetColumnAsync(itemField, cancellationToken);
+                var dataColumn = cachedColumn.DataColumn;
                 lastMilestone = "Read";
-
-                var dataEnumerable = dataColumn.GetDataWithPaddedNulls(itemField);
 
                 var numberOfListParents = itemField.NumberOfListParents;
                 #region Fixes TWO_TIER_LIST_TYPE_TEST
                 numberOfListParents = numberOfListParents == 0 ? 1 : numberOfListParents;
                 #endregion
 
-                var listValueBuilder = new ListValueBuilder(dataColumn.RepetitionLevels!, dataColumn.DefinitionLevels!, dataEnumerable, dataColumn.Field.ClrType);
+                var listValueBuilder = new ListValueBuilder(dataColumn.RepetitionLevels!, dataColumn.DefinitionLevels!,
+                    cachedColumn.GetPaddedView(itemField), cachedColumn.RowStarts, dataColumn.Field.ClrType);
                 var listValues = listValueBuilder.ReadRows((int)skipRecords, (int)readRecords, numberOfListParents,
                     itemField.CurrentDefinitionLevel, dataColumn.Field.MaxDefinitionLevel, cancellationToken);
                 lastMilestone = "ReadRows";
@@ -341,7 +338,7 @@ public partial class ParquetEngine
         }
     }
 
-    private static async Task ReadMapField(DataTableLite dataTable, ParquetRowGroupReader groupReader, int rowBeginIndex, ParquetSchemaElement field,
+    private static async Task ReadMapField(DataTableLite dataTable, CachedRowGroupReader groupReader, int rowBeginIndex, ParquetSchemaElement field,
         long skipRecords, long readRecords, bool isFirstColumn, CancellationToken cancellationToken, IProgress<int>? progress)
     {
         var keyValueField = field.GetMapKeyValueField();
@@ -353,36 +350,44 @@ public partial class ParquetEngine
 
         int rowIndex = rowBeginIndex;
 
-        int skippedRecords = 0;
-        var keyDataColumn = await ReadColumnAsync(groupReader, keyField, cancellationToken);
-        var valueDataColumn = await ReadColumnAsync(groupReader, valueField, cancellationToken);
+        var keyCachedColumn = await groupReader.GetColumnAsync(keyField, cancellationToken);
+        var valueCachedColumn = await groupReader.GetColumnAsync(valueField, cancellationToken);
+        var keyDataColumn = keyCachedColumn.DataColumn;
+        var valueDataColumn = valueCachedColumn.DataColumn;
 
-        var keyDataEnumerable = keyDataColumn.GetDataWithPaddedNulls(keyField);
-        var valueDataEnumerable = valueDataColumn.GetDataWithPaddedNulls(valueField);
-
-        var dataEnumerable = Engine.Helpers.PairEnumerables(keyDataEnumerable, valueDataEnumerable, DBNull.Value);
+        var keyData = keyCachedColumn.GetPaddedView(keyField);
+        var valueData = valueCachedColumn.GetPaddedView(valueField);
+        var pairCount = Math.Max(keyData.Length, valueData.Length);
 
         var levelCount = Math.Max(keyDataColumn.RepetitionLevels?.Length ?? 0, valueDataColumn.RepetitionLevels?.Length ?? 0);
         var fieldIndex = dataTable.Columns[field.Path]!.Ordinal;
+
+        //Jump straight to the first requested map instead of walking every key/value pair before it
+        var mapRowStarts = keyCachedColumn.GetMapRowStarts(() =>
+        {
+            var rowStarts = new List<int>(pairCount) { 0 };
+            for (var i = 1; i < pairCount && i != levelCount; i++)
+            {
+                if (GetRepetitionLevel(i) == 0)
+                    rowStarts.Add(i);
+            }
+            return [.. rowStarts];
+        });
+
+        if (pairCount == 0 || skipRecords >= mapRowStarts.Length)
+            return;
+
         ArrayList? mapKeys = null;
         ArrayList? mapValues = null;
-        int index = -1;
-        foreach (var (key, value) in dataEnumerable)
+        for (int index = mapRowStarts[skipRecords]; index < pairCount; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            index++;
+
+            var key = index < keyData.Length ? keyData[index] : DBNull.Value;
+            var value = index < valueData.Length ? valueData[index] : DBNull.Value;
 
             bool IsEndOfRow() => (index + 1) == levelCount
                 || GetRepetitionLevel(index + 1) == 0; //0 means new map
-
-            //Skip rows
-            if (skipRecords > skippedRecords)
-            {
-                if (IsEndOfRow())
-                    skippedRecords++;
-
-                continue;
-            }
 
             mapKeys ??= [];
             mapValues ??= [];
@@ -417,22 +422,22 @@ public partial class ParquetEngine
                 mapKeys.Add(key);
                 mapValues.Add(value);
             }
+        }
 
-            int GetRepetitionLevel(int dataIndex)
-            {
-                if (keyDataColumn.RepetitionLevels is null && valueDataColumn.RepetitionLevels is null)
-                    return 0; // assume each entry is a new row since we have no repetition levels
-                else if (keyDataColumn.RepetitionLevels?.Length > dataIndex)
-                    return keyDataColumn.RepetitionLevels[dataIndex];
-                else if (valueDataColumn.RepetitionLevels?.Length > dataIndex)
-                    return valueDataColumn.RepetitionLevels[dataIndex];
-                else
-                    throw new ArgumentOutOfRangeException(nameof(dataIndex));
-            }
+        int GetRepetitionLevel(int dataIndex)
+        {
+            if (keyDataColumn.RepetitionLevels is null && valueDataColumn.RepetitionLevels is null)
+                return 0; // assume each entry is a new row since we have no repetition levels
+            else if (keyDataColumn.RepetitionLevels?.Length > dataIndex)
+                return keyDataColumn.RepetitionLevels[dataIndex];
+            else if (valueDataColumn.RepetitionLevels?.Length > dataIndex)
+                return valueDataColumn.RepetitionLevels[dataIndex];
+            else
+                throw new ArgumentOutOfRangeException(nameof(dataIndex));
         }
     }
 
-    private async Task ReadStructField(DataTableLite dataTable, ParquetRowGroupReader groupReader, int rowBeginIndex, ParquetSchemaElement field,
+    private async Task ReadStructField(DataTableLite dataTable, CachedRowGroupReader groupReader, int rowBeginIndex, ParquetSchemaElement field,
        long skipRecords, long readRecords, bool isFirstColumn, CancellationToken cancellationToken, IProgress<int>? progress)
     {
         //Read struct data as a new datatable
@@ -539,7 +544,7 @@ public partial class ParquetEngine
         return dataTable;
     }
 
-    private static async Task<Parquet.Data.DataColumn> ReadColumnAsync(ParquetRowGroupReader groupReader, ParquetSchemaElement field, CancellationToken cancellationToken)
+    internal static async Task<Parquet.Data.DataColumn> ReadColumnAsync(ParquetRowGroupReader groupReader, ParquetSchemaElement field, CancellationToken cancellationToken)
     {
         try
         {

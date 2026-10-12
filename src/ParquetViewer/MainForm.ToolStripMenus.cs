@@ -16,10 +16,10 @@ public partial class MainForm
 
     private string? _getSqlCreateTableScriptToolStripMenuItem_ToolTipOriginalText;
 
-    private void NewToolStripMenuItem_Click(object sender, EventArgs e)
+    private async void NewToolStripMenuItem_Click(object sender, EventArgs e)
     {
         MenuBarClickEvent.FireAndForget(MenuBarClickEvent.ActionId.FileNew);
-        OpenFileOrFolderPath = null;
+        await CloseCurrentFileAsync();
     }
 
     private async void OpenToolStripMenuItem_Click(object sender, EventArgs e)
@@ -34,7 +34,7 @@ public partial class MainForm
         }
         catch
         {
-            OpenFileOrFolderPath = null;
+            await CloseCurrentFileAsync();
             throw;
         }
     }
@@ -51,7 +51,7 @@ public partial class MainForm
         }
         catch
         {
-            OpenFileOrFolderPath = null;
+            await CloseCurrentFileAsync();
             throw;
         }
     }
@@ -83,17 +83,21 @@ public partial class MainForm
         }
 
         string tableName = Path.GetFileNameWithoutExtension(openFileOrFolderPath) ?? DEFAULT_TABLE_NAME;
-        if (_mainDataSource?.Columns.Count > 0)
+        if (_mainDataSource is not null && GetUserColumns().Any())
         {
-            var dataset = new DataSet();
+            //Script a schema-only copy so the hidden row index column can be left out
+            using var schemaTable = _mainDataSource.Clone();
+            schemaTable.TableName = tableName;
+            if (_pageSource is not null && schemaTable.Columns.Contains(_pageSource.RowIndexColumnName))
+                schemaTable.Columns.Remove(_pageSource.RowIndexColumnName);
 
-            _mainDataSource.TableName = tableName;
-            dataset.Tables.Add(_mainDataSource);
+            using var dataset = new DataSet();
+            dataset.Tables.Add(schemaTable);
 
             var scriptAdapter = new CustomScriptBasedSchemaAdapter();
             string sql = scriptAdapter.GetSchemaScript(dataset, false);
 
-            dataset.Tables.Remove(_mainDataSource); //If we don't remove it, we can get errors in rare cases
+            dataset.Tables.Remove(schemaTable); //If we don't remove it, we can get errors in rare cases
 
             MenuBarClickEvent.FireAndForget(MenuBarClickEvent.ActionId.SQLCreateTable);
             Clipboard.SetText(sql);
@@ -111,12 +115,6 @@ public partial class MainForm
             using var metadataViewer = new MetadataViewer(_openParquetEngine!);
             metadataViewer.ShowDialog(this);
         }
-    }
-
-    private void AlwaysLoadAllRecordsToolStripMenuItem_Click(object sender, EventArgs e)
-    {
-        alwaysLoadAllRecordsToolStripMenuItem.Checked = !alwaysLoadAllRecordsToolStripMenuItem.Checked;
-        AppSettings.AlwaysLoadAllRecords = alwaysLoadAllRecordsToolStripMenuItem.Checked;
     }
 
     private void AboutToolStripMenuItem_Click(object sender, EventArgs e)
@@ -196,7 +194,8 @@ public partial class MainForm
     private void GetSQLCreateTableScriptToolStripMenuItem_MouseEnter(object sender, System.EventArgs e)
     {
         _getSqlCreateTableScriptToolStripMenuItem_ToolTipOriginalText ??= getSQLCreateTableScriptToolStripMenuItem.ToolTipText;
-        var firstColumn = MainDataSource?.Columns.AsEnumerable().FirstOrDefault();
+        var userColumns = GetUserColumns().ToList();
+        var firstColumn = userColumns.FirstOrDefault();
         if (firstColumn is null || OpenFileOrFolderPath is null)
         {
             ResetGetSQLCreateTableScriptToolStripMenuItemToolTipText();
@@ -209,7 +208,7 @@ public partial class MainForm
             string tableName = Path.GetFileNameWithoutExtension(OpenFileOrFolderPath) ?? DEFAULT_TABLE_NAME;
             string sqlTypeDefinition = CustomScriptBasedSchemaAdapter.GetTypeFor(firstColumn);
 
-            var truncateSuffix = MainDataSource?.Columns.Count > 1 ? ",..." : ")";
+            var truncateSuffix = userColumns.Count > 1 ? ",..." : ")";
             getSQLCreateTableScriptToolStripMenuItem.ToolTipText = $"CREATE TABLE [{tableName.Left(40, "...")}] ([{firstColumn}] {sqlTypeDefinition}{truncateSuffix}";
         }
         catch

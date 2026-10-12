@@ -12,6 +12,7 @@ public sealed partial class ParquetEngine : IParquetEngine, IDisposable
     private static readonly ParquetOptions _defaultParquetOptions = new() { UseDateOnlyTypeForDates = true, UseTimeOnlyTypeForTimeMicros = true, UseTimeOnlyTypeForTimeMillis = true };
     private readonly (string ParquetFilePath, ParquetReader Reader)[] _parquetFiles;
     private long? _recordCount;
+    private readonly RowGroupColumnCache _columnCache = new();
 
     private ParquetReader DefaultReader => _parquetFiles.Length > 0 ? _parquetFiles[0].Reader : throw new ParquetEngineException("No parquet readers available");
 
@@ -186,11 +187,17 @@ public sealed partial class ParquetEngine : IParquetEngine, IDisposable
         }
     }
 
-    public async Task WriteDataToParquetFileAsync(DataTable dataTable, string path,
+    public async Task WriteDataToParquetFileAsync(IAsyncEnumerable<DataTable> dataChunks, string path,
         IProgress<int> progress, Dictionary<string, string>? customMetadata, CancellationToken cancellationToken)
     {
-        var fields = new List<Field>(dataTable.Columns.Count);
-        foreach (DataColumn column in dataTable.Columns)
+        await using var chunkEnumerator = dataChunks.GetAsyncEnumerator(cancellationToken);
+        if (!await chunkEnumerator.MoveNextAsync())
+            throw new ArgumentException("At least one chunk is required to read the schema", nameof(dataChunks));
+
+        //The schema comes from the first chunk. The rest must match it.
+        var firstChunk = chunkEnumerator.Current;
+        var fields = new List<Field>(firstChunk.Columns.Count);
+        foreach (DataColumn column in firstChunk.Columns)
         {
             fields.Add(Schema.Fields
                 .Where(field => field.Name.Equals(column.ColumnName, StringComparison.InvariantCulture))
@@ -204,10 +211,17 @@ public sealed partial class ParquetEngine : IParquetEngine, IDisposable
         if (customMetadata is not null)
             parquetWriter.CustomMetadata = customMetadata;
 
+        do
+        {
+            await WriteRowGroupsAsync(parquetWriter, parquetSchema, chunkEnumerator.Current, progress, cancellationToken);
+        } while (!cancellationToken.IsCancellationRequested && await chunkEnumerator.MoveNextAsync());
+    }
+
+    private static async Task WriteRowGroupsAsync(ParquetWriter parquetWriter, ParquetSchema parquetSchema, DataTable dataTable,
+        IProgress<int> progress, CancellationToken cancellationToken)
+    {
         const int MAX_ROWS_PER_ROWGROUP = 100_000; //Without batching we sometimes get "OverflowException: Array dimensions exceeded supported range" from Parquet.NET
-        var batchIndex = 0;
-        var isLastBatch = false;
-        while (!isLastBatch)
+        for (var batchStart = 0; batchStart < dataTable.Rows.Count; batchStart += MAX_ROWS_PER_ROWGROUP)
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -223,17 +237,19 @@ public sealed partial class ParquetEngine : IParquetEngine, IDisposable
                 }
 
                 var type = dataField.IsNullable ? GetNullableVersion(dataField.ClrType) : dataField.ClrType;
-                var values = GetColumnValues(dataTable, type, dataField.Name, batchIndex * MAX_ROWS_PER_ROWGROUP, MAX_ROWS_PER_ROWGROUP);
+                var values = GetColumnValues(dataTable, type, dataField.Name, batchStart, MAX_ROWS_PER_ROWGROUP);
                 var dataColumn = new Parquet.Data.DataColumn(dataField, values);
                 await rowGroup.WriteColumnAsync(dataColumn, cancellationToken);
                 progress.Report(values.Length); //No way to report progress for each row, so do it by column
-                isLastBatch = values.Length < MAX_ROWS_PER_ROWGROUP;
             }
-            batchIndex++;
         }
     }
 
-    public void Dispose() => Engine.Helpers.EZDispose(_parquetFiles.Select(f => f.Reader));
+    public void Dispose()
+    {
+        _columnCache.Clear();
+        Engine.Helpers.EZDispose(_parquetFiles.Select(f => f.Reader));
+    }
 
     private static System.Type GetNullableVersion(System.Type sourceType) => sourceType is null
             ? throw new ArgumentNullException(nameof(sourceType))

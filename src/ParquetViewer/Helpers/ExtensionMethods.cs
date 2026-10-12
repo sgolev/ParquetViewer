@@ -22,21 +22,6 @@ public static class ExtensionMethods
     public const string ISO_8601_TIME_ONLY_FORMAT = "HH:mm:ss.FFFFFFF";
 
     /// <summary>
-    /// Returns a list of all column names within a given datatable
-    /// </summary>
-    /// <param name="datatable">The datatable to retrieve the column names from</param>
-    /// <returns></returns>
-    public static IList<string> GetColumnNames(this DataTable datatable)
-    {
-        var columns = new List<string>(datatable.Columns.Count);
-        foreach (DataColumn column in datatable.Columns)
-        {
-            columns.Add(column.ColumnName);
-        }
-        return columns;
-    }
-
-    /// <summary>
     /// Gets the corresponding date format string for the provided <paramref name="dateFormat"/>
     /// </summary>
     /// <param name="dateFormat">Date format to get formatting string for</param>

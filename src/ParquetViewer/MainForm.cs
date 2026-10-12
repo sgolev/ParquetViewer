@@ -9,6 +9,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -16,36 +17,26 @@ namespace ParquetViewer;
 
 public partial class MainForm : FormBase
 {
-    private const int DEFAULT_OFFSET = 0;
-    private const int DEFAULT_ROW_COUNT = 1000;
     private readonly string _defaultFormTitle;
 
     #region Members
     private readonly string? _fileToLoadOnLaunch;
     private string? _openFileOrFolderPath;
+    /// <remarks>Setting this only resets the UI. Use <see cref="CloseCurrentFileAsync"/> to close the open file.</remarks>
     private string? OpenFileOrFolderPath
     {
         get => _openFileOrFolderPath;
         set
         {
             _openFileOrFolderPath = value;
-            _openParquetEngine?.Dispose();
-            _openParquetEngine = null;
             SelectedFields = null;
             changeFieldsMenuStripButton.Enabled = false;
+            goToRowToolStripMenuItem.Enabled = false;
             getSQLCreateTableScriptToolStripMenuItem.Enabled = false;
             saveAsToolStripMenuItem.Enabled = false;
             metadataViewerToolStripMenuItem.Enabled = false;
-            recordCountStatusBarLabel.Text = "0";
-            totalRowCountStatusBarLabel.Text = "0";
-            actualShownRecordCountLabel.Text = "0";
-            mainGridView.DisposeAudioCells();
-            MainDataSource?.Dispose();
-            MainDataSource = null;
-            loadAllRowsButton.Enabled = false;
+            UpdatePager();
             searchFilterTextBox.PlaceholderText = "WHERE ";
-            offsetTextBox.SetTextQuiet(DEFAULT_OFFSET.ToString());
-            _currentOffset = DEFAULT_OFFSET;
             mainGridView.ClearQuickPeekForms();
             mainGridView.ClearColumnFormatOverrides();
             ResetGetSQLCreateTableScriptToolStripMenuItemToolTipText();
@@ -62,6 +53,7 @@ public partial class MainForm : FormBase
                     Text = Resources.Strings.MainWindowOpenFolderTitleFormat.Format(_openFileOrFolderPath);
 
                 changeFieldsMenuStripButton.Enabled = true;
+                goToRowToolStripMenuItem.Enabled = true;
                 saveAsToolStripMenuItem.Enabled = true;
                 getSQLCreateTableScriptToolStripMenuItem.Enabled = true;
                 metadataViewerToolStripMenuItem.Enabled = true;
@@ -95,28 +87,6 @@ public partial class MainForm : FormBase
         }
     }
 
-    private int _currentOffset = DEFAULT_OFFSET;
-    private int CurrentOffset
-    {
-        get => _currentOffset;
-        set
-        {
-            _currentOffset = value;
-            LoadFileToGridview();
-        }
-    }
-
-    private int _currentMaxRowCount = DEFAULT_ROW_COUNT;
-    private int CurrentMaxRowCount
-    {
-        get => _currentMaxRowCount;
-        set
-        {
-            _currentMaxRowCount = value;
-            LoadFileToGridview();
-        }
-    }
-
     private bool IsAnyFileOpen
         => !string.IsNullOrWhiteSpace(OpenFileOrFolderPath)
             && _openParquetEngine is not null;
@@ -132,7 +102,6 @@ public partial class MainForm : FormBase
 
             if (_mainDataSource is not null)
             {
-                loadAllRowsButton.Enabled = _mainDataSource.Rows.Count < (_openParquetEngine?.RecordCount ?? default);
                 SetSampleQueryAsPlaceHolder();
             }
         }
@@ -149,8 +118,6 @@ public partial class MainForm : FormBase
     {
         InitializeComponent();
         _defaultFormTitle = Text;
-        offsetTextBox.SetTextQuiet(DEFAULT_OFFSET.ToString());
-        recordCountTextBox.SetTextQuiet(DEFAULT_ROW_COUNT.ToString());
         MainDataSource = new DataTable();
         OpenFileOrFolderPath = null;
 
@@ -178,7 +145,6 @@ public partial class MainForm : FormBase
 
         //Check necessary toolstrip menu items
         RefreshDateFormatMenuItemSelection();
-        alwaysLoadAllRecordsToolStripMenuItem.Checked = AppSettings.AlwaysLoadAllRecords;
         darkModeToolStripMenuItem.Checked = AppSettings.DarkMode;
         RefreshExperimentalFeatureToolStrips();
         SetLanguageCheckmark();
@@ -189,6 +155,13 @@ public partial class MainForm : FormBase
 
         //Ask the user if they want to enable dark mode (only if their system is in dark mode)
         Program.AskUserIfTheyWantToSwitchToDarkMode();
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        //Stop any pending page loads or query scans
+        _loadCts.Cancel();
+        base.OnFormClosing(e);
     }
 
     private async Task<List<string>?> OpenFieldSelectionDialog(bool forceOpenDialog)
@@ -209,7 +182,7 @@ public partial class MainForm : FormBase
                 if (_openParquetEngine is null)
                 {
                     //cancel the file open
-                    OpenFileOrFolderPath = null;
+                    await CloseCurrentFileAsync();
                 }
 
                 if (ex is AllFilesSkippedException afse)
@@ -261,7 +234,7 @@ public partial class MainForm : FormBase
             }
             else
             {
-                using var fieldSelectionForm = new FieldsToLoadForm(fields, MainDataSource?.GetColumnNames() ?? Array.Empty<string>());
+                using var fieldSelectionForm = new FieldsToLoadForm(fields, GetUserColumnNames());
                 if (fieldSelectionForm.ShowDialog(this) == DialogResult.OK && fieldSelectionForm.NewSelectedFields?.Count > 0)
                 {
                     return fieldSelectionForm.NewSelectedFields;
@@ -284,39 +257,15 @@ public partial class MainForm : FormBase
         if (_openParquetEngine is null)
             return;
 
-#if RELEASE_SELFCONTAINED
-        //Self contained release has both Parquet.NET and DuckDB engines included as the file size remains the same.
         try
         {
-            await this.LoadFileToGridviewImpl(this._openParquetEngine);
+            await LoadFileToGridviewImpl(_openParquetEngine);
         }
-        catch (Exception unhandledEx)
+        catch (Exception ex)
         {
-            //Try DuckDB if Parquet.NET fails
-            if (this._openParquetEngine is Engine.DuckDB.ParquetEngine)
+            if (!await TryReloadWithDuckDBAsync(ex, null, 0))
                 throw;
-
-            try
-            {
-                var duckDbEngine = await Engine.DuckDB.ParquetEngine.OpenFileOrFolderAsync(this.OpenFileOrFolderPath!);
-                await LoadFileToGridviewImpl(duckDbEngine);
-                SwapEngines(duckDbEngine);
-            }
-            catch (Exception duckDbEx)
-            {
-                //If DuckDB fails too, bail
-                throw new Exceptions.RowsReadException(unhandledEx, duckDbEx);
-            }
         }
-
-        void SwapEngines(IParquetEngine newEngine)
-        {
-            this._openParquetEngine.DisposeSafely();
-            this._openParquetEngine = newEngine;
-        }
-#else
-        await LoadFileToGridviewImpl(_openParquetEngine);
-#endif
 
         _originalModifiedInfo = null;
     }
@@ -328,6 +277,7 @@ public partial class MainForm : FormBase
         var indexTime = TimeSpan.Zero;
         LoadingIcon? loadingIcon = null;
         var wasSuccessful = false;
+        var loadedRowCount = 0;
         try
         {
             if (!IsAnyFileOpen)
@@ -342,62 +292,32 @@ public partial class MainForm : FormBase
                 return;
             }
 
-            long cellCount = SelectedFields.Count * Math.Min(CurrentMaxRowCount, engine.RecordCount - CurrentOffset);
+            var fields = SelectedFields.ToList();
+            var viewGeneration = StartNewViewGeneration();
+            var isFullLoad = IsUnderFullLoadLimit(engine.RecordCount, fields.Count);
+            var rowsToRead = isFullLoad ? (int)Math.Max(engine.RecordCount, 1) : PAGE_SIZE;
+
+            long cellCount = fields.Count * Math.Min(rowsToRead, engine.RecordCount);
             loadingIcon = ShowLoadingIcon(Resources.Strings.LoadingDataLabelText, cellCount);
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(loadingIcon.CancellationToken, _loadCts.Token);
 
-            var intermediateResult = await Task.Run(async () =>
+            (var firstPage, loadTime, indexTime) = await ReadSliceAsync(engine, fields, 0, rowsToRead, loadingIcon, cancellation.Token);
+            if (viewGeneration != _viewGeneration)
             {
-                return await engine.ReadRowsAsync(SelectedFields, CurrentOffset, CurrentMaxRowCount, loadingIcon, loadingIcon.CancellationToken);
-            }, loadingIcon.CancellationToken);
-
-            loadTime = stopwatch.Elapsed;
-            bool showIndexingProgress = false;
-            if (loadTime > TimeSpan.FromSeconds(4))
-            {
-                //Don't bother showing the indexing step if the data load was really fast because we know 
-                //indexing will be instantaneous. It looks better this way in my opinion.
-                loadingIcon.Reset(Resources.Strings.IndexingDataLabelText);
-                showIndexingProgress = true;
+                firstPage.Dispose();
+                return; //Something else was loaded in the meantime
             }
 
-            var finalResult = await Task.Run(() => intermediateResult.Invoke(showIndexingProgress), loadingIcon.CancellationToken);
-            indexTime = stopwatch.Elapsed - loadTime;
+            var rowIndexColumnName = PagedRowSource.GetRowIndexColumnName(fields);
+            PagedRowSource.AddRowIndexColumn(firstPage, rowIndexColumnName, 0);
+            var pageSource = new UnfilteredPageSource(CreateReadSlice(engine, fields), engine.RecordCount, PAGE_SIZE, rowIndexColumnName);
+            ShowNewDataSource(firstPage, pageSource, fields, isFullLoad);
 
-            recordCountStatusBarLabel.Text = Resources.Strings.LoadedRecordCountRangeFormat.Format(CurrentOffset, CurrentOffset + finalResult.Rows.Count);
-            totalRowCountStatusBarLabel.Text = engine.RecordCount.ToString();
-            actualShownRecordCountLabel.Text = finalResult.Rows.Count.ToString();
-
-            MainDataSource = finalResult;
+            loadedRowCount = firstPage.Rows.Count;
             wasSuccessful = true;
         }
-        catch (AllFilesSkippedException ex)
+        catch (Exception ex) when (TryHandleLoadException(ex))
         {
-            HandleAllFilesSkippedException(ex);
-        }
-        catch (SomeFilesSkippedException ex)
-        {
-            HandleSomeFilesSkippedException(ex);
-        }
-        catch (FileReadException ex)
-        {
-            HandleFileReadException(ex);
-        }
-        catch (MultipleSchemasFoundException ex)
-        {
-            HandleMultipleSchemasFoundException(ex);
-        }
-        catch (MalformedFieldException ex)
-        {
-            HandleMalformedFieldException(ex);
-        }
-        catch (DecimalOverflowException ex)
-        {
-            HandleDecimalOverflowException(ex);
-        }
-        catch (Exception ex)
-        {
-            if (ex is not OperationCanceledException)
-                throw;
         }
         finally
         {
@@ -407,7 +327,7 @@ public partial class MainForm : FormBase
             var renderTime = totalTime - loadTime - indexTime;
 
             //Little secret performance counter
-            showingStatusBarLabel.ToolTipText = $"Total time: {totalTime:mm\\:ss\\.ff}" + Environment.NewLine +
+            pageStatusBarLabel.ToolTipText = $"Total time: {totalTime:mm\\:ss\\.ff}" + Environment.NewLine +
             $"    Load time: {loadTime:mm\\:ss\\.ff}" + Environment.NewLine +
             $"    Index time: {indexTime:mm\\:ss\\.ff}" + Environment.NewLine +
             $"    Render time: {renderTime:mm\\:ss\\.ff}" + Environment.NewLine +
@@ -421,16 +341,17 @@ public partial class MainForm : FormBase
                     ? FileOpenEvent.ParquetEngineTypeId.ParquetNET
                     : FileOpenEvent.ParquetEngineTypeId.DuckDB;
 
+                var userColumns = GetUserColumns().ToList();
                 FileOpenEvent.FireAndForget(
                     Directory.Exists(OpenFileOrFolderPath),
                     engine.NumberOfPartitions,
                     engine.RecordCount,
                     engine.Metadata.RowGroups.Count,
                     engine.Fields.Count,
-                    MainDataSource!.Columns.Cast<DataColumn>().Select(column => column.DataType.Name).Distinct().Order().ToArray(),
-                    CurrentOffset,
-                    CurrentMaxRowCount,
-                    MainDataSource!.Columns.Count,
+                    userColumns.Select(column => column.DataType.Name).Distinct().Order().ToArray(),
+                    0,
+                    loadedRowCount,
+                    userColumns.Count,
                     (long)totalTime.TotalMilliseconds,
                     (long)loadTime.TotalMilliseconds,
                     (long)indexTime.TotalMilliseconds,
@@ -442,26 +363,10 @@ public partial class MainForm : FormBase
 
     private async Task OpenNewFileOrFolder(string fileOrFolderPath)
     {
+        await CloseCurrentFileAsync();
         OpenFileOrFolderPath = fileOrFolderPath;
 
         var fieldList = await OpenFieldSelectionDialog(false);
-        var wasOpenSuccess = _openParquetEngine is not null;
-
-        if (wasOpenSuccess && AppSettings.AlwaysLoadAllRecords)
-        {
-            var recordCount = _openParquetEngine!.RecordCount;
-            if (recordCount == 0 || recordCount > int.MaxValue)
-                recordCount = DEFAULT_ROW_COUNT;
-
-            _currentMaxRowCount = (int)recordCount;
-            recordCountTextBox.SetTextQuiet(recordCount.ToString());
-        }
-        else
-        {
-            _currentMaxRowCount = DEFAULT_ROW_COUNT;
-            recordCountTextBox.SetTextQuiet(DEFAULT_ROW_COUNT.ToString());
-        }
-
         if (fieldList is not null)
         {
             SelectedFields = fieldList; //triggers a file load
@@ -471,7 +376,7 @@ public partial class MainForm : FormBase
     }
 
     /// <summary>
-    /// Checks <see cref="AppSettings.DateTimeDisplayFormat"/> and checks/unchecks 
+    /// Checks <see cref="AppSettings.DateTimeDisplayFormat"/> and checks/unchecks
     /// the appropriate date format options located in the menu bar.
     /// </summary>
     private void RefreshDateFormatMenuItemSelection()
@@ -497,7 +402,7 @@ public partial class MainForm : FormBase
     }
 
     /// <summary>
-    /// Provides the user with a sample query in <see cref="searchFilterTextBox"/> 
+    /// Provides the user with a sample query in <see cref="searchFilterTextBox"/>
     /// using the first primitive field available in the dataset. If none are found,
     /// the placeholder won't contain a sample. Only the "WHERE ".
     /// </summary>
@@ -508,7 +413,7 @@ public partial class MainForm : FormBase
         if (MainDataSource is null || MainDataSource.Rows.Count == 0)
             return;
 
-        var simpleColumn = MainDataSource.Columns.AsEnumerable().FirstOrDefault(c => c.DataType.IsSimple());
+        var simpleColumn = GetUserColumns().FirstOrDefault(c => c.DataType.IsSimple());
         if (simpleColumn is null)
             return;
 

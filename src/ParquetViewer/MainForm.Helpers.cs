@@ -10,6 +10,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -27,11 +28,13 @@ public partial class MainForm
         {
             mainTableLayoutPanel.Enabled = false;
             mainMenuStrip.Enabled = false;
+            mainStatusStrip.Enabled = false;
         };
         loadingIcon.OnHide += (sender, e) =>
         {
             mainTableLayoutPanel.Enabled = true;
             mainMenuStrip.Enabled = true;
+            mainStatusStrip.Enabled = true;
         };
 
         loadingIcon.Show();
@@ -49,9 +52,12 @@ public partial class MainForm
         filePathWithExtension = string.IsNullOrWhiteSpace(filePathWithExtension) ? null : filePathWithExtension;
         try
         {
-            if (MainDataSource?.DefaultView.Count > 0)
+            var (exportRowCount, isExactRowCount) = GetExportRowCount();
+            if (MainDataSource is not null && _pageSource is not null && (exportRowCount > 0 || !isExactRowCount))
             {
-                exportFileDialog.Title = Resources.Strings.RecordsToBeExportedTitleFormat.Format(MainDataSource.DefaultView.Count);
+                exportFileDialog.Title = isExactRowCount
+                    ? Resources.Strings.RecordsToBeExportedTitleFormat.Format(exportRowCount)
+                    : Resources.Strings.MatchingRecordsToBeExportedTitle;
                 exportFileDialog.Filter = "CSV file (*.csv)|*.csv|JSON file (*.json)|*.json|Excel '93 file (*.xls)|*.xls|Excel '07 file (*.xlsx)|*.xlsx";
                 exportFileDialog.FilterIndex = (int)defaultFileType + 1;
 
@@ -68,34 +74,47 @@ public partial class MainForm
 
                     var fileExtension = Path.GetExtension(filePath);
                     FileType? selectedFileType = UtilityMethods.ExtensionToFileType(fileExtension) ?? throw new ArgumentOutOfRangeException(fileExtension);
+
+                    //Don't bother reading anything if we already know the file format can't hold this many rows
+                    ExportRowLimitExceededException.ThrowIfExceeded(selectedFileType.Value, exportRowCount, !isExactRowCount);
+
                     var stopWatch = Stopwatch.StartNew();
-                    loadingIcon = ShowLoadingIcon(Resources.Strings.ExportingDataLabelText, MainDataSource.DefaultView.Count * MainDataSource.Columns.Count);
-                    await ExportResultsImpl(MainDataSource!, selectedFileType.Value, _openParquetEngine,
-                        filePath, loadingIcon, OpenFileOrFolderPath, loadingIcon.CancellationToken);
+                    var columnCount = GetUserColumns().Count();
+                    loadingIcon = ShowLoadingIcon(Resources.Strings.ExportingDataLabelText, isExactRowCount ? exportRowCount * columnCount : 0);
+                    using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(loadingIcon.CancellationToken, _loadCts.Token);
 
-                    if (loadingIcon.CancellationToken.IsCancellationRequested)
-                    {
-                        CleanupFile(filePath);
-                        MessageBox.Show(Resources.Strings.ExportCancelledMessage, Resources.Strings.ExportCancelledTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    else
-                    {
-                        long fileSizeInBytes = new FileInfo(filePath).Length;
+                    var rowCounter = new ExportRowCounter();
+                    var dataChunks = CountExportedRows(GetExportChunks(cancellation.Token), selectedFileType.Value, rowCounter, cancellation.Token);
+                    await ExportResultsImpl(dataChunks, columnCount, selectedFileType.Value, _openParquetEngine,
+                        filePath, loadingIcon, OpenFileOrFolderPath, cancellation.Token);
+                    cancellation.Token.ThrowIfCancellationRequested(); //Some writers stop early instead of throwing
 
-                        FileExportEvent.FireAndForget(
-                            selectedFileType.Value,
-                            fileSizeInBytes,
-                            mainGridView.RowCount,
-                            mainGridView.ColumnCount,
-                            stopWatch.ElapsedMilliseconds);
+                    long fileSizeInBytes = new FileInfo(filePath).Length;
 
-                        MessageBox.Show(this,
-                            Resources.Strings.ExportSuccessfulMessageFormat.Format(Math.Round((fileSizeInBytes / 1024.0) / 1024.0, 2)),
-                            Resources.Strings.ExportSuccessfulTitle,
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
+                    FileExportEvent.FireAndForget(
+                        selectedFileType.Value,
+                        fileSizeInBytes,
+                        (int)Math.Min(rowCounter.Count, int.MaxValue),
+                        columnCount,
+                        stopWatch.ElapsedMilliseconds);
+
+                    MessageBox.Show(this,
+                        Resources.Strings.ExportSuccessfulMessageFormat.Format(Math.Round((fileSizeInBytes / 1024.0) / 1024.0, 2)),
+                        Resources.Strings.ExportSuccessfulTitle,
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
+        }
+        catch (Exception ex) when (FindInnerException<ExportRowLimitExceededException>(ex) is { } rowLimitException)
+        {
+            //Some writers (e.g. MiniExcel) wrap exceptions thrown while reading the data
+            CleanupFile(filePath);
+            ShowExportRowLimitExceededError(rowLimitException);
+        }
+        catch (OperationCanceledException)
+        {
+            CleanupFile(filePath);
+            MessageBox.Show(Resources.Strings.ExportCancelledMessage, Resources.Strings.ExportCancelledTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (IOException ex)
         {
@@ -140,36 +159,129 @@ public partial class MainForm
         }
     }
 
+    private sealed class ExportRowCounter
+    {
+        public long Count { get; set; }
+    }
 
-    private static Task ExportResultsImpl(DataTable dataTable, FileType selectedFileType, IParquetEngine? engine,
+    /// <summary>
+    /// The number of rows an export will write
+    /// </summary>
+    /// <returns>The row count, and whether it's exact or only the number of query matches found so far</returns>
+    private (long RowCount, bool IsExact) GetExportRowCount()
+    {
+        if (MainDataSource is null || _pageSource is null)
+            return (0, true);
+
+        if (_isFullLoad)
+            return (MainDataSource.DefaultView.Count, true);
+
+        return (_pageSource.KnownRowCount, _pageSource.IsComplete);
+    }
+
+    /// <summary>
+    /// Every row the user can page through: the entire file, or all matches of the active query
+    /// </summary>
+    private IAsyncEnumerable<DataTable> GetExportChunks(CancellationToken cancellationToken)
+    {
+        //Everything is in memory already. Exporting the view also keeps the user's sort order.
+        if (_isFullLoad)
+            return ReadViewInChunks(MainDataSource!.DefaultView, GetUserColumns().ToList()).ToAsyncEnumerable();
+
+        return _pageSource!.ReadAllChunksAsync(EXPORT_CHUNK_SIZE, cancellationToken);
+    }
+
+    /// <summary>
+    /// Copies the rows of <paramref name="dataView"/> a chunk at a time so the whole view isn't duplicated in memory
+    /// </summary>
+    private static IEnumerable<DataTable> ReadViewInChunks(DataView dataView, List<DataColumn> columns)
+    {
+        using var schema = new DataTable();
+        foreach (var column in columns)
+        {
+            schema.Columns.Add(column.ColumnName, column.DataType);
+        }
+
+        var chunk = schema.Clone();
+        for (var i = 0; i < dataView.Count; i++)
+        {
+            var row = dataView[i].Row;
+            chunk.LoadDataRow(columns.Select(column => row[column]).ToArray(), true);
+            if (chunk.Rows.Count == EXPORT_CHUNK_SIZE)
+            {
+                yield return chunk;
+                chunk = schema.Clone();
+            }
+        }
+
+        if (chunk.Rows.Count > 0 || dataView.Count == 0) //Always return at least one chunk so the schema can be written
+            yield return chunk;
+    }
+
+    /// <summary>
+    /// Counts the rows passing through and stops the export as soon as the file format's row limit is exceeded
+    /// </summary>
+    private static async IAsyncEnumerable<DataTable> CountExportedRows(IAsyncEnumerable<DataTable> dataChunks, FileType fileType,
+        ExportRowCounter rowCounter, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var dataChunk in dataChunks.WithCancellation(cancellationToken))
+        {
+            rowCounter.Count += dataChunk.Rows.Count;
+            ExportRowLimitExceededException.ThrowIfExceeded(fileType, rowCounter.Count, true);
+            yield return dataChunk;
+        }
+    }
+
+    private static T? FindInnerException<T>(Exception? ex) where T : Exception
+    {
+        while (ex is not null)
+        {
+            if (ex is T match)
+                return match;
+
+            ex = ex.InnerException;
+        }
+        return null;
+    }
+
+    private void ShowExportRowLimitExceededError(ExportRowLimitExceededException ex)
+        => MessageBox.Show(this,
+            Resources.Errors.ExportRowLimitExceededErrorMessageFormat.Format(
+                ex.FileType.GetExtension(),
+                ex.MaxDataRowCount,
+                ex.IsLowerBound ? $"{ex.RowCount:N0}+" : $"{ex.RowCount:N0}"),
+            Resources.Errors.ExportRowLimitExceededErrorTitle,
+            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+    private static Task ExportResultsImpl(IAsyncEnumerable<DataTable> dataChunks, int columnCount, FileType selectedFileType, IParquetEngine? engine,
         string filePath, IProgress<int> progress, string? sourceFileOrFolderPath, CancellationToken cancellationToken)
     {
         if (selectedFileType == FileType.CSV)
         {
-            return WriteDataToCSVFile(dataTable, filePath, cancellationToken, progress);
+            return WriteDataToCSVFile(dataChunks, filePath, cancellationToken, progress);
         }
         else if (selectedFileType == FileType.XLS)
         {
             const int MAX_XLS_COLUMN_COUNT = 256; //.xls format has a hard limit on 256 columns
-            if (dataTable.Columns.Count > MAX_XLS_COLUMN_COUNT)
+            if (columnCount > MAX_XLS_COLUMN_COUNT)
             {
                 MessageBox.Show(
-                    Resources.Errors.TooManyColumnsXlsErrorMessageFormat.Format(MAX_XLS_COLUMN_COUNT, dataTable.Columns.Count),
+                    Resources.Errors.TooManyColumnsXlsErrorMessageFormat.Format(MAX_XLS_COLUMN_COUNT, columnCount),
                     Resources.Errors.TooManyColumnsErrorTitle,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
 
                 return Task.CompletedTask;
             }
 
-            return WriteDataToExcel93File(dataTable, filePath, cancellationToken, progress);
+            return WriteDataToExcel93File(dataChunks, filePath, cancellationToken, progress);
         }
         else if (selectedFileType == FileType.XLSX)
         {
             const int MAX_XLSX_COLUMN_COUNT = 16384; //.xlsx format has a hard limit on 16384 columns
-            if (dataTable.Columns.Count > MAX_XLSX_COLUMN_COUNT)
+            if (columnCount > MAX_XLSX_COLUMN_COUNT)
             {
                 MessageBox.Show(
-                    Resources.Errors.TooManyColumnsXlsxErrorMessageFormat.Format(MAX_XLSX_COLUMN_COUNT, dataTable.Columns.Count),
+                    Resources.Errors.TooManyColumnsXlsxErrorMessageFormat.Format(MAX_XLSX_COLUMN_COUNT, columnCount),
                     Resources.Errors.TooManyColumnsErrorTitle,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
 
@@ -177,17 +289,17 @@ public partial class MainForm
             }
 
             var sheetName = Path.GetFileNameWithoutExtension(sourceFileOrFolderPath) ?? "Sheet1";
-            return WriteDataToExcel2007File(dataTable, filePath, sheetName, cancellationToken, progress);
+            return WriteDataToExcel2007File(dataChunks, filePath, sheetName, cancellationToken, progress);
         }
         else if (selectedFileType == FileType.JSON)
         {
-            return WriteDataToJSONFile(dataTable, filePath, cancellationToken, progress);
+            return WriteDataToJSONFile(dataChunks, filePath, cancellationToken, progress);
         }
         else if (selectedFileType == FileType.PARQUET)
         {
             ArgumentNullException.ThrowIfNull(engine);
             var engineTypeName = engine is Engine.ParquetNET.ParquetEngine ? "ParquetNET" : "DuckDB";
-            return WriteDataToParquetFile(engine, dataTable, filePath, progress, engineTypeName, cancellationToken);
+            return WriteDataToParquetFile(engine, dataChunks, filePath, progress, engineTypeName, cancellationToken);
         }
         else
         {
@@ -195,94 +307,106 @@ public partial class MainForm
         }
     }
 
-    private static async Task WriteDataToExcel2007File(DataTable mainDataSource, string path, string sheetName, CancellationToken cancellationToken, IProgress<int> progress)
-    {
-        const int MAX_XLSX_SHEET_NAME_LENGTH = 31;
+    //The writers run on a background thread as reading the data chunks can take a while
 
-        //sanitize sheet name
-        sheetName = Regex.Replace(sheetName, "[^a-zA-Z0-9 _\\-()]", string.Empty).Left(MAX_XLSX_SHEET_NAME_LENGTH);
+    internal static Task WriteDataToExcel2007File(IAsyncEnumerable<DataTable> dataChunks, string path, string sheetName, CancellationToken cancellationToken, IProgress<int> progress)
+        => Task.Run(async () =>
+            {
+                const int MAX_XLSX_SHEET_NAME_LENGTH = 31;
 
-        using var fs = new FileStream(path, FileMode.OpenOrCreate);
-        await fs.SaveAsAsync(mainDataSource, printHeader: true, sheetName, ExcelType.XLSX, configuration: null, progress, cancellationToken);
-    }
+                //sanitize sheet name
+                sheetName = Regex.Replace(sheetName, "[^a-zA-Z0-9 _\\-()]", string.Empty).Left(MAX_XLSX_SHEET_NAME_LENGTH);
 
-    private static Task WriteDataToCSVFile(DataTable dataTable, string path, CancellationToken cancellationToken, IProgress<int> progress)
-        => Task.Run(() =>
+                using var fs = new FileStream(path, FileMode.OpenOrCreate);
+                using var dataReader = await ChunkedDataReader.CreateAsync(dataChunks, cancellationToken);
+                await fs.SaveAsAsync(dataReader, printHeader: true, sheetName, ExcelType.XLSX, configuration: null, progress, cancellationToken);
+            }, cancellationToken);
+
+    internal static Task WriteDataToCSVFile(IAsyncEnumerable<DataTable> dataChunks, string path, CancellationToken cancellationToken, IProgress<int> progress)
+        => Task.Run(async () =>
             {
                 using var writer = new StreamWriter(path, false, Encoding.UTF8);
 
                 var rowBuilder = new StringBuilder();
-                bool isFirst = true;
-                foreach (DataColumn column in dataTable.Columns)
-                {
-                    if (!isFirst)
-                    {
-                        rowBuilder.Append(',');
-                    }
-                    else
-                    {
-                        isFirst = false;
-                    }
-
-                    rowBuilder.Append(
-                        column.ColumnName
-                            .Replace("\r", string.Empty)
-                            .Replace("\n", string.Empty)
-                            .Replace(",", string.Empty));
-                }
-                writer.WriteLine(rowBuilder.ToString());
-
+                var isHeaderWritten = false;
                 string dateFormat = AppSettings.DateTimeDisplayFormat.GetDateFormat();
                 string dateOnlyFormat = AppSettings.DateTimeDisplayFormat.GetDateOnlyFormat();
                 string timeOnlyFormat = AppSettings.DateTimeDisplayFormat.GetTimeOnlyFormat();
-                foreach (DataRowView row in dataTable.DefaultView)
+                await foreach (var dataTable in dataChunks.WithCancellation(cancellationToken))
                 {
-                    rowBuilder.Clear();
-
-                    isFirst = true;
-                    foreach (object? value in row.Row.ItemArray)
+                    if (!isHeaderWritten)
                     {
-                        if (cancellationToken.IsCancellationRequested)
+                        bool isFirst = true;
+                        foreach (DataColumn column in dataTable.Columns)
                         {
-                            break;
-                        }
+                            if (!isFirst)
+                            {
+                                rowBuilder.Append(',');
+                            }
+                            else
+                            {
+                                isFirst = false;
+                            }
 
-                        if (!isFirst)
-                        {
-                            rowBuilder.Append(',');
+                            rowBuilder.Append(
+                                column.ColumnName
+                                    .Replace("\r", string.Empty)
+                                    .Replace("\n", string.Empty)
+                                    .Replace(",", string.Empty));
                         }
-                        else
-                        {
-                            isFirst = false;
-                        }
-
-                        if (value is DateTime dt)
-                        {
-                            rowBuilder.Append(UtilityMethods.CleanCSVValue(dt.ToString(dateFormat)));
-                        }
-                        else if (value is DateOnly dateOnly)
-                        {
-                            rowBuilder.Append(UtilityMethods.CleanCSVValue(dateOnly.ToString(dateOnlyFormat)));
-                        }
-                        else if (value is TimeOnly timeOnly)
-                        {
-                            rowBuilder.Append(UtilityMethods.CleanCSVValue(timeOnly.ToString(timeOnlyFormat)));
-                        }
-                        else
-                        {
-                            var stringValue = value!.ToString()!; //we never have `null` only `DBNull.Value`
-                            rowBuilder.Append(UtilityMethods.CleanCSVValue(stringValue));
-                        }
-
-                        progress.Report(1);
+                        writer.WriteLine(rowBuilder.ToString());
+                        isHeaderWritten = true;
                     }
 
-                    writer.WriteLine(rowBuilder.ToString());
+                    foreach (DataRow row in dataTable.Rows)
+                    {
+                        rowBuilder.Clear();
+
+                        var isFirst = true;
+                        foreach (object? value in row.ItemArray)
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                break;
+                            }
+
+                            if (!isFirst)
+                            {
+                                rowBuilder.Append(',');
+                            }
+                            else
+                            {
+                                isFirst = false;
+                            }
+
+                            if (value is DateTime dt)
+                            {
+                                rowBuilder.Append(UtilityMethods.CleanCSVValue(dt.ToString(dateFormat)));
+                            }
+                            else if (value is DateOnly dateOnly)
+                            {
+                                rowBuilder.Append(UtilityMethods.CleanCSVValue(dateOnly.ToString(dateOnlyFormat)));
+                            }
+                            else if (value is TimeOnly timeOnly)
+                            {
+                                rowBuilder.Append(UtilityMethods.CleanCSVValue(timeOnly.ToString(timeOnlyFormat)));
+                            }
+                            else
+                            {
+                                var stringValue = value!.ToString()!; //we never have `null` only `DBNull.Value`
+                                rowBuilder.Append(UtilityMethods.CleanCSVValue(stringValue));
+                            }
+
+                            progress.Report(1);
+                        }
+
+                        writer.WriteLine(rowBuilder.ToString());
+                    }
                 }
             }, cancellationToken);
 
-    private static Task WriteDataToExcel93File(DataTable dataTable, string path, CancellationToken cancellationToken, IProgress<int> progress)
-        => Task.Run(() =>
+    internal static Task WriteDataToExcel93File(IAsyncEnumerable<DataTable> dataChunks, string path, CancellationToken cancellationToken, IProgress<int> progress)
+        => Task.Run(async () =>
             {
                 string dateFormat = AppSettings.DateTimeDisplayFormat.GetDateFormat();
                 string dateOnlyFormat = AppSettings.DateTimeDisplayFormat.GetDateOnlyFormat();
@@ -291,61 +415,71 @@ public partial class MainForm
                 var excelWriter = new ExcelWriter(fs);
                 excelWriter.BeginWrite();
 
-                //Write headers
-                for (int i = 0; i < dataTable.Columns.Count; i++)
+                var isHeaderWritten = false;
+                var rowIndex = 0; //Row 0 is the header row
+                await foreach (var dataTable in dataChunks.WithCancellation(cancellationToken))
                 {
-                    excelWriter.WriteCell(0, i, dataTable.Columns[i].ColumnName);
-                }
-
-                //Write data
-                for (int i = 0; i < dataTable.DefaultView.Count; i++)
-                {
-                    if (cancellationToken.IsCancellationRequested)
+                    //Write headers
+                    if (!isHeaderWritten)
                     {
-                        break;
+                        for (int i = 0; i < dataTable.Columns.Count; i++)
+                        {
+                            excelWriter.WriteCell(0, i, dataTable.Columns[i].ColumnName);
+                        }
+                        isHeaderWritten = true;
                     }
 
-                    for (int j = 0; j < dataTable.Columns.Count; j++)
+                    //Write data
+                    foreach (DataRow row in dataTable.Rows)
                     {
-                        var value = dataTable.DefaultView[i][j];
-                        if (value == DBNull.Value)
+                        if (cancellationToken.IsCancellationRequested)
                         {
-                            excelWriter.WriteCell(i + 1, j); //empty cell
+                            break;
                         }
-                        else if (IsIntCastSafe(value))
-                        {
-                            excelWriter.WriteCell(i + 1, j, Convert.ToInt32(value));
-                        }
-                        else if (IsDoubleCastSafe(value))
-                        {
-                            excelWriter.WriteCell(i + 1, j, Convert.ToDouble(value));
-                        }
-                        else if (value is DateTime dt)
-                        {
-                            excelWriter.WriteCell(i + 1, j, dt.ToString(dateFormat));
-                        }
-                        else if (value is DateOnly dateOnly)
-                        {
-                            excelWriter.WriteCell(i + 1, j, dateOnly.ToString(dateOnlyFormat));
-                        }
-                        else if (value is TimeOnly timeOnly)
-                        {
-                            excelWriter.WriteCell(i + 1, j, timeOnly.ToString(timeOnlyFormat));
-                        }
-                        else
-                        {
-                            var stringValue = value.ToString();
 
-                            //BUG: for some reason strings longer than 255 characters appear empty.
-                            const int maxSupportedCellLength = 255;
-                            if (stringValue!.Length > maxSupportedCellLength)
+                        rowIndex++;
+                        for (int j = 0; j < dataTable.Columns.Count; j++)
+                        {
+                            var value = row[j];
+                            if (value == DBNull.Value)
                             {
-                                throw new XlsCellLengthException(maxSupportedCellLength);
+                                excelWriter.WriteCell(rowIndex, j); //empty cell
                             }
+                            else if (IsIntCastSafe(value))
+                            {
+                                excelWriter.WriteCell(rowIndex, j, Convert.ToInt32(value));
+                            }
+                            else if (IsDoubleCastSafe(value))
+                            {
+                                excelWriter.WriteCell(rowIndex, j, Convert.ToDouble(value));
+                            }
+                            else if (value is DateTime dt)
+                            {
+                                excelWriter.WriteCell(rowIndex, j, dt.ToString(dateFormat));
+                            }
+                            else if (value is DateOnly dateOnly)
+                            {
+                                excelWriter.WriteCell(rowIndex, j, dateOnly.ToString(dateOnlyFormat));
+                            }
+                            else if (value is TimeOnly timeOnly)
+                            {
+                                excelWriter.WriteCell(rowIndex, j, timeOnly.ToString(timeOnlyFormat));
+                            }
+                            else
+                            {
+                                var stringValue = value.ToString();
 
-                            excelWriter.WriteCell(i + 1, j, stringValue);
+                                //BUG: for some reason strings longer than 255 characters appear empty.
+                                const int maxSupportedCellLength = 255;
+                                if (stringValue!.Length > maxSupportedCellLength)
+                                {
+                                    throw new XlsCellLengthException(maxSupportedCellLength);
+                                }
+
+                                excelWriter.WriteCell(rowIndex, j, stringValue);
+                            }
+                            progress.Report(1);
                         }
-                        progress.Report(1);
                     }
                 }
 
@@ -363,36 +497,39 @@ public partial class MainForm
                 excelWriter.EndWrite();
             }, cancellationToken);
 
-    private static Task WriteDataToJSONFile(DataTable dataTable, string path, CancellationToken cancellationToken, IProgress<int> progress)
-        => Task.Run(() =>
+    internal static Task WriteDataToJSONFile(IAsyncEnumerable<DataTable> dataChunks, string path, CancellationToken cancellationToken, IProgress<int> progress)
+        => Task.Run(async () =>
             {
                 using var fs = new FileStream(path, FileMode.OpenOrCreate);
                 using var jsonWriter = new Engine.Utf8JsonWriterWithRunningLength(fs);
 
                 jsonWriter.WriteStartArray();
-                foreach (DataRowView row in dataTable.DefaultView)
+                await foreach (var dataTable in dataChunks.WithCancellation(cancellationToken))
                 {
-                    jsonWriter.WriteStartObject();
-                    for (var i = 0; i < row.Row.ItemArray.Length; i++)
+                    foreach (DataRow row in dataTable.Rows)
                     {
-                        if (cancellationToken.IsCancellationRequested)
+                        jsonWriter.WriteStartObject();
+                        for (var i = 0; i < row.ItemArray.Length; i++)
                         {
-                            break;
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                break;
+                            }
+
+                            var columnName = dataTable.Columns[i].ColumnName;
+                            jsonWriter.WritePropertyName(columnName);
+
+                            object? value = row.ItemArray[i];
+                            Engine.Helpers.WriteValue(jsonWriter, value!, false);
+                            progress.Report(1);
                         }
-
-                        var columnName = dataTable.Columns[i].ColumnName;
-                        jsonWriter.WritePropertyName(columnName);
-
-                        object? value = row.Row.ItemArray[i];
-                        Engine.Helpers.WriteValue(jsonWriter, value!, false);
-                        progress.Report(1);
+                        jsonWriter.WriteEndObject();
                     }
-                    jsonWriter.WriteEndObject();
                 }
                 jsonWriter.WriteEndArray();
             }, cancellationToken);
 
-    private static Task WriteDataToParquetFile(IParquetEngine engine, DataTable dataTable, string path,
+    private static Task WriteDataToParquetFile(IParquetEngine engine, IAsyncEnumerable<DataTable> dataChunks, string path,
         IProgress<int> progress, string engineName, CancellationToken cancellationToken)
         => Task.Run(async () =>
             {
@@ -409,7 +546,7 @@ public partial class MainForm
 }"
                             }
                         };
-                await engine.WriteDataToParquetFileAsync(dataTable, path, progress, customMetadata, cancellationToken);
+                await engine.WriteDataToParquetFileAsync(dataChunks, path, progress, customMetadata, cancellationToken);
             }, cancellationToken);
 
     private static void HandleAllFilesSkippedException(AllFilesSkippedException ex)

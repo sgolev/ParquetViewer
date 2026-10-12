@@ -30,7 +30,6 @@ public class HelperTests
         ""device_id"": ""{AppSettings.AnalyticsDeviceId}"",
         ""event_type"": ""{TestAmplitudeEvent.EVENT_TYPE}"",
         ""user_properties"": {{
-            ""alwaysLoadAllRecords"": {AppSettings.AlwaysLoadAllRecords.ToString().ToLower()},
             ""alwaysSelectAllFields"": {AppSettings.AlwaysSelectAllFields.ToString().ToLower()},
             ""dateTimeDisplayFormat"": ""{AppSettings.DateTimeDisplayFormat}"",
             ""systemMemory"": {(int)(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1048576.0 /*magic number*/)},
