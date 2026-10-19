@@ -1,0 +1,273 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="CopyRawMetadataFailedErrorMessage" xml:space="preserve">
+    <value>Не удалось скопировать метаданные в буфер обмена. Хотите сохранить их в файл?</value>
+  </data>
+  <data name="CopyRawMetadataFailedErrorTitle" xml:space="preserve">
+    <value>Ошибка копирования</value>
+  </data>
+  <data name="FieldListGenerationError" xml:space="preserve">
+    <value>Произошла ошибка при создании списка полей.</value>
+  </data>
+  <data name="FileAssociationFailedErrorMessageFormat" xml:space="preserve">
+    <value>Что-то пошло не так (код ошибки: {0}). Попробуйте запустить ParquetViewer от имени администратора и повторить.</value>
+  </data>
+  <data name="FileAssociationFailedErrorTitle" xml:space="preserve">
+    <value>Не удалось назначить ассоциацию расширения</value>
+  </data>
+  <data name="GenericErrorMessage" xml:space="preserve">
+    <value>Что-то пошло не так</value>
+  </data>
+  <data name="InvalidDateFormatErrorMessage" xml:space="preserve">
+    <value>Недопустимый формат даты. Допустимые форматы описаны в документации.</value>
+  </data>
+  <data name="InvalidDateFormatErrorTitle" xml:space="preserve">
+    <value>Недопустимый формат даты</value>
+  </data>
+  <data name="InvalidQueryErrorTitle" xml:space="preserve">
+    <value>Недопустимый запрос</value>
+  </data>
+  <data name="MetadataReadErrorMessage" xml:space="preserve">
+    <value>Произошла ошибка при чтении метаданных файла.</value>
+  </data>
+  <data name="MetadataReadErrorTitle" xml:space="preserve">
+    <value>Ошибка метаданных</value>
+  </data>
+  <data name="NestedListOfTypeNotSupportedMessageFormat" xml:space="preserve">
+    <value>Поля {0}, содержащие {1}, в настоящее время не поддерживаются</value>
+  </data>
+  <data name="NoFieldsFoundErrorMessage" xml:space="preserve">
+    <value>Выбранный файл/папка не содержит полей.</value>
+  </data>
+  <data name="NoFieldsFoundErrorTitle" xml:space="preserve">
+    <value>Поля не найдены</value>
+  </data>
+  <data name="NoThriftMetadataAvailableErrorMessage" xml:space="preserve">
+    <value>Метаданные Thrift не найдены</value>
+  </data>
+  <data name="OpenFileNoLongerExistsErrorMessageFormat" xml:space="preserve">
+    <value>Указанный файл/папка больше не существует: {0}Пожалуйста, откройте другой файл или папку.</value>
+  </data>
+  <data name="ParquetSchemaReadErrorMessage" xml:space="preserve">
+    <value>Не удалось прочитать схему Parquet.</value>
+  </data>
+  <data name="SelectAtLeastOneFieldErrorMessage" xml:space="preserve">
+    <value>Выберите хотя бы одно поле</value>
+  </data>
+  <data name="SelectAtLeastOneFieldErrorTitle" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="StructWithUnsupportedFieldErrorMessageFormat" xml:space="preserve">
+    <value>Struct `{0}` содержит неподдерживаемое поле: `{1}`</value>
+  </data>
+  <data name="TooManyColumnsXlsErrorMessageFormat" xml:space="preserve">
+    <value>Формат файла .xls поддерживает не более {0} столбцов.
+
+Выберите другой тип файла или уменьшите количество экспортируемых полей. Количество ваших полей: {1} </value>
+  </data>
+  <data name="TooManyColumnsErrorTitle" xml:space="preserve">
+    <value>Слишком много столбцов</value>
+  </data>
+  <data name="TooManyColumnsXlsxErrorMessageFormat" xml:space="preserve">
+    <value>Формат файла .xlsx поддерживает не более {0} столбцов.
+
+Выберите другой тип файла или уменьшите количество экспортируемых полей. Количество ваших полей: {1} </value>
+  </data>
+  <data name="UnknownFieldTypeErrorMessage" xml:space="preserve">
+    <value>Неизвестный тип поля</value>
+  </data>
+  <data name="UnsupportedExportTypeFormat" xml:space="preserve">
+    <value>Неподдерживаемый тип файла: '{0}'</value>
+  </data>
+  <data name="ExportFailedErrorTitle" xml:space="preserve">
+    <value>Не удалось выполнить экспорт в файл</value>
+  </data>
+  <data name="NoValidParquetFilesFoundErrorMessage" xml:space="preserve">
+    <value>Допустимые файлы parquet не найдены. Найдены недопустимые файлы:</value>
+  </data>
+  <data name="SomeInvalidParquetFilesFoundErrorMessage" xml:space="preserve">
+    <value>Не удалось загрузить некоторые файлы parquet. Найдены недопустимые файлы:</value>
+  </data>
+  <data name="UnexpectedFileReadErrorMessageFormat" xml:space="preserve">
+    <value>Не удалось прочитать файл Parquet.
+
+Если проблема сохраняется, пожалуйста, сообщите о ней в репозитории проекта на GitHub: Справка → О программе
+
+{0}</value>
+  </data>
+  <data name="MultipleSchemasDetectedErrorMessage" xml:space="preserve">
+    <value>Обнаружено несколько схем.</value>
+  </data>
+  <data name="MalformedFieldErrorMessageFormat" xml:space="preserve">
+    <value>{0}
+
+Если вы считаете, что файл на самом деле корректен, сообщите о проблеме в репозитории проекта на GitHub: Справка → О программе</value>
+  </data>
+  <data name="DecimalValueTooLargeErrorTitle" xml:space="preserve">
+    <value>Значение Decimal слишком велико</value>
+  </data>
+  <data name="DecimalValueTooLargeErrorMessageFormat" xml:space="preserve">
+    <value>Поле `{0}` типа DECIMAL({1}, {2}) выходит за диапазон, поддерживаемый ParquetViewer: DECIMAL({3}, {4}) и DECIMAL({3}, 0)</value>
+  </data>
+  <data name="MultipleSchemasDetectedEntriesErrorMessageFormat" xml:space="preserve">
+    <value>ПОЛЯ СХЕМЫ-{0} (ПЕРВЫЕ 5):</value>
+  </data>
+  <data name="CopyAsWhereTooLargeErrorMessage" xml:space="preserve">
+    <value>Выбрано слишком много данных. Выберите меньше ячеек.</value>
+  </data>
+  <data name="CopyAsWhereTooLargeErrorTitle" xml:space="preserve">
+    <value>Не удалось скопировать в буфер обмена</value>
+  </data>
+  <data name="InvalidQueryErrorMessage" xml:space="preserve">
+    <value>Запрос выглядит недопустимым.</value>
+  </data>
+  <data name="UnexpectedAssemblyVersionErrorFormat" xml:space="preserve">
+    <value>Обнаружена неожиданная версия сборки: {0}</value>
+  </data>
+  <data name="CopyToClipboardErrorTitle" xml:space="preserve">
+    <value>Не удалось скопировать в буфер обмена</value>
+  </data>
+  <data name="CopyErrorMessageText" xml:space="preserve">
+    <value>(Для копирования нажмите CTRL+C)</value>
+  </data>
+  <data name="DecimalValueUnknownSizeTooLargeErrorMessageFormat" xml:space="preserve">
+    <value>Обнаружено значение DECIMAL вне диапазона, поддерживаемого ParquetViewer: DECIMAL({3}, {4}) и DECIMAL({3}, 0)</value>
+  </data>
+  <data name="ListsWithNullsErrorMessage" xml:space="preserve">
+    <value>Списки, содержащие null, не поддерживаются.</value>
+  </data>
+  <data name="ListsWithNullsErrorTitle" xml:space="preserve">
+    <value>Не удалось прочитать все записи</value>
+  </data>
+  <data name="QueryExecutionErrorTitle" xml:space="preserve">
+    <value>Ошибка при выполнении запроса</value>
+  </data>
+  <data name="RenderResultsErrorTitle" xml:space="preserve">
+    <value>Ошибка при отображении результатов</value>
+  </data>
+  <data name="ExportRowLimitExceededErrorTitle" xml:space="preserve">
+    <value>Слишком много строк</value>
+  </data>
+  <data name="ExportRowLimitExceededErrorMessageFormat" xml:space="preserve">
+    <value>Формат файла {0} поддерживает не более {1:N0} строк.
+
+Этот экспорт содержит {2} строк. Пожалуйста, экспортируйте в формат CSV, JSON или Parquet.</value>
+  </data>
+</root>

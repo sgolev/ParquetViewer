@@ -1,0 +1,372 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="LoadingDataLabelText" xml:space="preserve">
+    <value>Загрузка данных</value>
+  </data>
+  <data name="CancelInitiatedLabelText" xml:space="preserve">
+    <value>Отмена...</value>
+  </data>
+  <data name="ExportingDataLabelText" xml:space="preserve">
+    <value>Экспорт данных</value>
+  </data>
+  <data name="IndexingDataLabelText" xml:space="preserve">
+    <value>Индексация</value>
+  </data>
+  <data name="PrivacyPolicyLabelText" xml:space="preserve">
+    <value>Политика конфиденциальности</value>
+  </data>
+  <data name="InvalidDateFormatErrorText" xml:space="preserve">
+    <value>недопустимый формат даты</value>
+  </data>
+  <data name="TooManyFieldsErrorFormat" xml:space="preserve">
+    <value>Неподдерживаемое количество полей: {0}</value>
+  </data>
+  <data name="UnsupportedFieldCountTextFormat" xml:space="preserve">
+    <value>Не поддерживается: {0}</value>
+  </data>
+  <data name="SelectAllCheckmarkTextFormat" xml:space="preserve">
+    <value>Выбрать все (кол-во: {0})</value>
+  </data>
+  <data name="DeselectAllCheckmarkTextFormat" xml:space="preserve">
+    <value>Снять выбор (кол-во: {0})</value>
+  </data>
+  <data name="ThriftMetadataCopiedToClipboardMessage" xml:space="preserve">
+    <value>Необработанные метаданные Thrift скопированы в буфер обмена.</value>
+  </data>
+  <data name="SaveRawMetadataToFileDialogTitle" xml:space="preserve">
+    <value>Сохранить необработанные метаданные</value>
+  </data>
+  <data name="MetadataSuccessfullyExportedToFileMessageFormat" xml:space="preserve">
+    <value>Метаданные успешно сохранены: {0}</value>
+  </data>
+  <data name="MetadataSuccessfullyExportedToFileMessageTitle" xml:space="preserve">
+    <value>Сохранено</value>
+  </data>
+  <data name="MainWindowOpenFileTitleFormat" xml:space="preserve">
+    <value>Файл: {0}</value>
+  </data>
+  <data name="MainWindowOpenFolderTitleFormat" xml:space="preserve">
+    <value>Папка: {0}</value>
+  </data>
+  <data name="QuerySyntaxHelpText" xml:space="preserve">
+    <value>ПРОВЕРКА НА NULL:
+    WHERE field_name IS NULL
+    WHERE field_name IS NOT NULL
+ДАТА и ВРЕМЯ:
+    WHERE field_name &gt;= #2000-12-31#
+    WHERE field_name = #2000-01-13 01:00:00#
+ЧИСЛА:
+    WHERE field_name &lt;= 123.4
+    WHERE (field1 * field2) / 100 &gt; 0.1
+ТЕКСТ:
+    WHERE field_name LIKE '%value%'
+    WHERE field_name = 'equals value'
+    WHERE field_name &lt;&gt; 'not equals'
+ПРОВЕРКА IN:
+    WHERE field_name IN (value1, value2)
+    WHERE field_name NOT IN (value3, value4)
+НЕСКОЛЬКО УСЛОВИЙ:
+    WHERE (field_1 = 0 AND field_2 &lt;&gt; 'value') OR field_3 IS NULL
+
+Подробнее: 'Справка → Руководство пользователя'</value>
+  </data>
+  <data name="QuerySyntaxHelpTitle" xml:space="preserve">
+    <value>Примеры синтаксиса фильтра запроса</value>
+  </data>
+  <data name="RecordsToBeExportedTitleFormat" xml:space="preserve">
+    <value>Будет экспортировано записей: {0}</value>
+  </data>
+  <data name="ExportCancelledMessage" xml:space="preserve">
+    <value>Экспорт в файл отменён</value>
+  </data>
+  <data name="ExportCancelledTitle" xml:space="preserve">
+    <value>Экспорт отменён</value>
+  </data>
+  <data name="ExportSuccessfulMessageFormat" xml:space="preserve">
+    <value>Результаты успешно сохранены!
+
+Размер файла: {0} МБ</value>
+  </data>
+  <data name="ExportSuccessfulTitle" xml:space="preserve">
+    <value>Экспорт выполнен</value>
+  </data>
+  <data name="SwitchFromXlsToXlsxMessageFormat" xml:space="preserve">
+    <value>Файлы {1} поддерживают не более {0} символов в ячейке.
+
+Хотите экспортировать результаты в файл {2}?</value>
+  </data>
+  <data name="SwitchFromXlsToXlsxMessageTitle" xml:space="preserve">
+    <value>Слишком длинные данные — сменить тип файла?</value>
+  </data>
+  <data name="CreateTableScriptCopiedToClipboardMessage" xml:space="preserve">
+    <value>Скрипт CREATE TABLE скопирован в буфер обмена!</value>
+  </data>
+  <data name="CreateTableScriptFailedWithNoFieldsMessage" xml:space="preserve">
+    <value>Чтобы создать SQL-скрипт, сначала выберите несколько полей</value>
+  </data>
+  <data name="CopyToClipboardText" xml:space="preserve">
+    <value>Копировать</value>
+  </data>
+  <data name="CancelButtonText" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="CopyToClipboardWithHeadersText" xml:space="preserve">
+    <value>Копировать с заголовками</value>
+  </data>
+  <data name="CopyAsWhereConditionText" xml:space="preserve">
+    <value>Копировать как условие WHERE</value>
+  </data>
+  <data name="DecimalScientificFormatting" xml:space="preserve">
+    <value>Научный</value>
+  </data>
+  <data name="DimensionsText" xml:space="preserve">
+    <value>Размеры</value>
+  </data>
+  <data name="TypeText" xml:space="preserve">
+    <value>Формат</value>
+  </data>
+  <data name="SaveImageToFileButtonTextFormat" xml:space="preserve">
+    <value>Сохранить как {0}</value>
+  </data>
+  <data name="CantGoBackLinkButtonText" xml:space="preserve">
+    <value>назад вернуться нельзя</value>
+  </data>
+  <data name="SaveImageAsButtonText" xml:space="preserve">
+    <value>Сохранить изображение как {0}</value>
+  </data>
+  <data name="ImageSavedToDiskMessage" xml:space="preserve">
+    <value>Изображение сохранено: {0}</value>
+  </data>
+  <data name="ImageSavedToDiskTitle" xml:space="preserve">
+    <value>Сохранено</value>
+  </data>
+  <data name="DecimalFormatting" xml:space="preserve">
+    <value>Десятичный</value>
+  </data>
+  <data name="LanguageChangeConfirmationTitle" xml:space="preserve">
+    <value>Перезапустить ParquetViewer?</value>
+  </data>
+  <data name="LanguageChangeConfirmationMessage" xml:space="preserve">
+    <value>Для смены языка необходимо перезапустить приложение. Продолжить?</value>
+  </data>
+  <data name="DotNetDateFormatHelpUrl" xml:space="preserve">
+    <value>https://docs.microsoft.com/ru-ru/dotnet/standard/base-types/custom-date-and-time-format-strings</value>
+  </data>
+  <data name="AnalyticsConsentPromptMessage" xml:space="preserve">
+    <value>Хотите поддержать ParquetViewer, отправляя анонимную статистику использования?
+
+Свой выбор можно в любой момент изменить в меню «Справка».</value>
+  </data>
+  <data name="AnalyticsConsentPromptTitle" xml:space="preserve">
+    <value>Собирать анонимные данные об использовании?</value>
+  </data>
+  <data name="FileExtensionAssociationPromptMessageFormat" xml:space="preserve">
+    <value>Хотите сделать ParquetViewer приложением по умолчанию для файлов .parquet?
+
+Расположение приложения: {0}
+
+Этот параметр также можно изменить в разделе «Справка → О программе».</value>
+  </data>
+  <data name="FileExtensionAssociationPromptTitle" xml:space="preserve">
+    <value>Запрос на назначение ParquetViewer приложением по умолчанию</value>
+  </data>
+  <data name="FileExtensionAssociationCancelledMessage" xml:space="preserve">
+    <value>Ассоциация расширения отменена. Если передумаете, это можно сделать позже в разделе «Справка → О программе».</value>
+  </data>
+  <data name="FileExtensionAssociationCancelledTitle" xml:space="preserve">
+    <value>Ассоциация расширения отменена</value>
+  </data>
+  <data name="FileExtensionAssociationFailedMessageFormat" xml:space="preserve">
+    <value>Что-то пошло не так (код ошибки: {0}).
+
+Повторить попытку можно в разделе «Справка → О программе».</value>
+  </data>
+  <data name="FileExtensionAssociationFailedTitle" xml:space="preserve">
+    <value>Не удалось назначить ассоциацию расширения</value>
+  </data>
+  <data name="FileExtensionAssociationSucceededMessage" xml:space="preserve">
+    <value>Ассоциация расширения выполнена! ParquetViewer назначен приложением по умолчанию для файлов .parquet.</value>
+  </data>
+  <data name="FileExtensionAssociationSucceededTitle" xml:space="preserve">
+    <value>Ассоциация расширения выполнена</value>
+  </data>
+  <data name="DarkModePromptMessage" xml:space="preserve">
+    <value>Хотите использовать ParquetViewer в тёмной теме?
+
+Свой выбор можно в любой момент изменить в меню «Правка».</value>
+  </data>
+  <data name="DarkModePromptTitle" xml:space="preserve">
+    <value>Включить тёмную тему?</value>
+  </data>
+  <data name="QueryRunningStatusText" xml:space="preserve">
+    <value>Выполняется:</value>
+  </data>
+  <data name="QueryFinishedStatusText" xml:space="preserve">
+    <value>Завершено:</value>
+  </data>
+  <data name="QueryZoomStatusTextFormat" xml:space="preserve">
+    <value>Масштаб запроса: {0}%</value>
+  </data>
+  <data name="ByteArraysNotSupportedErrorMessage" xml:space="preserve">
+    <value>К сожалению, поля byte[] не могут быть показаны в результатах запроса. Их значения будут отображаться как null.</value>
+  </data>
+  <data name="ByteArraysNotSupportedErrorTitle" xml:space="preserve">
+    <value>Результаты типа byte[] не поддерживаются</value>
+  </data>
+  <data name="FrozenColumnText" xml:space="preserve">
+    <value>Закрепить</value>
+  </data>
+  <data name="OpenFileNoLongerExistsTitleSuffix" xml:space="preserve">
+    <value>УДАЛЁН</value>
+  </data>
+  <data name="OpenFileWasModifiedTitleSuffix" xml:space="preserve">
+    <value>ИЗМЕНЁН</value>
+  </data>
+  <data name="WordWrapContextMenuItemText" xml:space="preserve">
+    <value>Перенос текста</value>
+  </data>
+  <data name="GoToRowFormTitle" xml:space="preserve">
+    <value>Перейти к строке</value>
+  </data>
+  <data name="GoToRowLabelTextFormat" xml:space="preserve">
+    <value>Номер строки (1 - {0}):</value>
+  </data>
+  <data name="GoToMatchLabelTextFormat" xml:space="preserve">
+    <value>Номер совпадения (1 - {0}):</value>
+  </data>
+  <data name="GoToRowButtonText" xml:space="preserve">
+    <value>Перейти</value>
+  </data>
+  <data name="SearchingForMatchesLabelText" xml:space="preserve">
+    <value>Поиск совпадений</value>
+  </data>
+  <data name="MatchingRecordsToBeExportedTitle" xml:space="preserve">
+    <value>Будут экспортированы записи, соответствующие текущему запросу</value>
+  </data>
+  <data name="PageCountFormat" xml:space="preserve">
+    <value>/ {0:N0} ({1:N0} строк)</value>
+  </data>
+  <data name="PageCountIncompleteFormat" xml:space="preserve">
+    <value>/ {0:N0}+ ({1:N0}+ строк)</value>
+  </data>
+  <data name="SortingUnavailableToolTip" xml:space="preserve">
+    <value>Сортировка доступна, только если все строки помещаются на одной странице.</value>
+  </data>
+</root>

@@ -69,6 +69,7 @@ namespace ParquetViewer
             languageToolStripMenuItem = new ToolStripMenuItem();
             englishToolStripMenuItem = new ToolStripMenuItem();
             turkishToolStripMenuItem = new ToolStripMenuItem();
+            russianToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             leftSpringStatusBarLabel = new ToolStripStatusLabel();
             previousPageButton = new ToolStripButton();
@@ -313,7 +314,7 @@ namespace ParquetViewer
             // 
             // languageToolStripMenuItem
             // 
-            languageToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { englishToolStripMenuItem, turkishToolStripMenuItem });
+            languageToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { englishToolStripMenuItem, turkishToolStripMenuItem, russianToolStripMenuItem });
             languageToolStripMenuItem.Image = Resources.Icons.localization_icon;
             languageToolStripMenuItem.Name = "languageToolStripMenuItem";
             resources.ApplyResources(languageToolStripMenuItem, "languageToolStripMenuItem");
@@ -331,6 +332,13 @@ namespace ParquetViewer
             resources.ApplyResources(turkishToolStripMenuItem, "turkishToolStripMenuItem");
             turkishToolStripMenuItem.Tag = "tr-TR";
             turkishToolStripMenuItem.Click += LanguageToolStripMenuItem_Click;
+            //
+            // russianToolStripMenuItem
+            //
+            russianToolStripMenuItem.Name = "russianToolStripMenuItem";
+            resources.ApplyResources(russianToolStripMenuItem, "russianToolStripMenuItem");
+            russianToolStripMenuItem.Tag = "ru-RU";
+            russianToolStripMenuItem.Click += LanguageToolStripMenuItem_Click;
             // 
             // aboutToolStripMenuItem
             // 
@@ -484,6 +492,7 @@ namespace ParquetViewer
         private ToolStripMenuItem languageToolStripMenuItem;
         private ToolStripMenuItem englishToolStripMenuItem;
         private ToolStripMenuItem turkishToolStripMenuItem;
+        private ToolStripMenuItem russianToolStripMenuItem;
         private Timer fileIntegrityCheckingTimer;
     }
 }
