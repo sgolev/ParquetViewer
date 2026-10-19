@@ -5,7 +5,7 @@ using System.Runtime.Versioning;
 
 [assembly: AssemblyTitle("ParquetViewer")]
 [assembly: AssemblyDescription("Simple Windows desktop application for viewing Apache Parquet files\r\n" +
-    "https://github.com/mukunku/ParquetViewer\r\n\r\n" +
+    "https://github.com/sagolev/ParquetViewer\r\n\r\n" +
     "Privacy policy: https://github.com/mukunku/ParquetViewer/wiki/Privacy-Policy")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Author: Mukunku")]
@@ -20,7 +20,7 @@ using System.Runtime.Versioning;
 
 // Version information for an assembly consists of the following four values:
 //      Major Version
-//      Minor Version 
+//      Minor Version
 //      Patch Version
 //      Revision
-[assembly: AssemblyVersion("4.2.1.0")]
+[assembly: AssemblyVersion("5.0.0.0")]
